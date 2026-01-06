@@ -17,11 +17,22 @@ import { renderLottery } from "./pages/Lottery.js";
 import { renderHistory } from "./pages/History.js";
 import { renderReports } from "./pages/Reports.js";
 import { renderSyncSettings } from "./pages/SyncSettings.js";
+import authManager from "./auth/AuthManager.js";
+import { renderLogin } from "./pages/Login.js";
 
-// Inicializar aplicación
-async function init() {
+let appStarted = false;
+
+async function startApplication() {
+  if (appStarted) return;
+  appStarted = true;
+
   try {
     console.log("🚀 Iniciando aplicación...");
+
+    const appContainer = document.querySelector(".app-container");
+    if (appContainer) {
+      appContainer.style.removeProperty("display");
+    }
 
     // Inicializar base de datos
     await db.init();
@@ -91,6 +102,40 @@ async function init() {
           <h2 class="empty-state__title">Error Fatal</h2>
           <p class="empty-state__description">No se pudo inicializar la aplicación: ${error.message}</p>
           <button class="btn btn--primary" onclick="window.location.reload()">Recargar</button>
+        </div>
+      </div>
+    `;
+    appStarted = false;
+  }
+}
+
+// Inicializar aplicación con autenticación
+async function init() {
+  try {
+    const session = await authManager.init();
+
+    if (session) {
+      await startApplication();
+    } else {
+      renderLogin(async () => {
+        await startApplication();
+      });
+    }
+
+    authManager.onChange((event, sessionState) => {
+      if (event === "INITIAL_SESSION") return;
+      if (!sessionState) {
+        window.location.reload();
+      }
+    });
+  } catch (error) {
+    console.error("❌ Error al iniciar autenticación:", error);
+    document.getElementById("main-content").innerHTML = `
+      <div class="page-container">
+        <div class="empty-state">
+          <div class="empty-state__icon">❌</div>
+          <h2 class="empty-state__title">Error de autenticación</h2>
+          <p class="empty-state__description">No se pudo iniciar el sistema: ${error.message}</p>
         </div>
       </div>
     `;

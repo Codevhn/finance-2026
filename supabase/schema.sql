@@ -11,6 +11,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- ============================================
 CREATE TABLE IF NOT EXISTS goals (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL DEFAULT auth.uid() REFERENCES auth.users (id) ON DELETE CASCADE,
   local_id INTEGER,
   nombre TEXT NOT NULL,
   monto_objetivo NUMERIC(10, 2) NOT NULL,
@@ -27,12 +28,14 @@ CREATE TABLE IF NOT EXISTS goals (
 CREATE INDEX idx_goals_completada ON goals(completada);
 CREATE INDEX idx_goals_fecha_creacion ON goals(fecha_creacion);
 CREATE INDEX idx_goals_sync_status ON goals(sync_status);
+CREATE INDEX idx_goals_user_id ON goals(user_id);
 
 -- ============================================
 -- TABLA: debts (Deudas)
 -- ============================================
 CREATE TABLE IF NOT EXISTS debts (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL DEFAULT auth.uid() REFERENCES auth.users (id) ON DELETE CASCADE,
   local_id INTEGER,
   nombre TEXT NOT NULL,
   monto_total NUMERIC(10, 2) NOT NULL,
@@ -50,12 +53,14 @@ CREATE TABLE IF NOT EXISTS debts (
 CREATE INDEX idx_debts_archivada ON debts(archivada);
 CREATE INDEX idx_debts_fecha_creacion ON debts(fecha_creacion);
 CREATE INDEX idx_debts_sync_status ON debts(sync_status);
+CREATE INDEX idx_debts_user_id ON debts(user_id);
 
 -- ============================================
 -- TABLA: debtors (Personas deudoras)
 -- ============================================
 CREATE TABLE IF NOT EXISTS debtors (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL DEFAULT auth.uid() REFERENCES auth.users (id) ON DELETE CASCADE,
   local_id INTEGER,
   nombre TEXT NOT NULL,
   telefono TEXT,
@@ -70,12 +75,14 @@ CREATE TABLE IF NOT EXISTS debtors (
 
 CREATE INDEX idx_debtors_nombre ON debtors(nombre);
 CREATE INDEX idx_debtors_sync_status ON debtors(sync_status);
+CREATE INDEX idx_debtors_user_id ON debtors(user_id);
 
 -- ============================================
 -- TABLA: savings (Ahorros)
 -- ============================================
 CREATE TABLE IF NOT EXISTS savings (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL DEFAULT auth.uid() REFERENCES auth.users (id) ON DELETE CASCADE,
   local_id INTEGER,
   nombre TEXT NOT NULL,
   monto_objetivo NUMERIC(10, 2) NOT NULL,
@@ -91,12 +98,14 @@ CREATE TABLE IF NOT EXISTS savings (
 
 CREATE INDEX idx_savings_fecha_creacion ON savings(fecha_creacion);
 CREATE INDEX idx_savings_sync_status ON savings(sync_status);
+CREATE INDEX idx_savings_user_id ON savings(user_id);
 
 -- ============================================
 -- TABLA: lottery (Lotería)
 -- ============================================
 CREATE TABLE IF NOT EXISTS lottery (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL DEFAULT auth.uid() REFERENCES auth.users (id) ON DELETE CASCADE,
   local_id INTEGER,
   fecha DATE NOT NULL,
   tipo TEXT NOT NULL CHECK (tipo IN ('apuesta', 'premio')),
@@ -110,12 +119,14 @@ CREATE TABLE IF NOT EXISTS lottery (
 CREATE INDEX idx_lottery_fecha ON lottery(fecha);
 CREATE INDEX idx_lottery_tipo ON lottery(tipo);
 CREATE INDEX idx_lottery_sync_status ON lottery(sync_status);
+CREATE INDEX idx_lottery_user_id ON lottery(user_id);
 
 -- ============================================
 -- TABLA: transactions (Transacciones generales)
 -- ============================================
 CREATE TABLE IF NOT EXISTS transactions (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL DEFAULT auth.uid() REFERENCES auth.users (id) ON DELETE CASCADE,
   local_id INTEGER,
   tipo TEXT NOT NULL CHECK (tipo IN ('ingreso', 'egreso')),
   categoria TEXT NOT NULL,
@@ -131,12 +142,14 @@ CREATE INDEX idx_transactions_tipo ON transactions(tipo);
 CREATE INDEX idx_transactions_categoria ON transactions(categoria);
 CREATE INDEX idx_transactions_fecha ON transactions(fecha);
 CREATE INDEX idx_transactions_sync_status ON transactions(sync_status);
+CREATE INDEX idx_transactions_user_id ON transactions(user_id);
 
 -- ============================================
 -- TABLA: history (Historial de auditoría)
 -- ============================================
 CREATE TABLE IF NOT EXISTS history (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL DEFAULT auth.uid() REFERENCES auth.users (id) ON DELETE CASCADE,
   local_id INTEGER,
   timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   entity_type TEXT NOT NULL,
@@ -151,6 +164,7 @@ CREATE INDEX idx_history_timestamp ON history(timestamp);
 CREATE INDEX idx_history_entity_type ON history(entity_type);
 CREATE INDEX idx_history_entity_id ON history(entity_id);
 CREATE INDEX idx_history_action ON history(action);
+CREATE INDEX idx_history_user_id ON history(user_id);
 
 -- ============================================
 -- TRIGGERS PARA ACTUALIZAR updated_at
@@ -196,15 +210,27 @@ ALTER TABLE lottery ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE history ENABLE ROW LEVEL SECURITY;
 
--- Política para permitir todas las operaciones (sin autenticación)
--- ADVERTENCIA: Esto permite acceso público. Úsalo solo para desarrollo o apps de usuario único.
-CREATE POLICY "Permitir todo en goals" ON goals FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Permitir todo en debts" ON debts FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Permitir todo en debtors" ON debtors FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Permitir todo en savings" ON savings FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Permitir todo en lottery" ON lottery FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Permitir todo en transactions" ON transactions FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Permitir todo en history" ON history FOR ALL USING (true) WITH CHECK (true);
+-- Políticas para permitir acceso solo al propietario autenticado
+CREATE POLICY "Solo propietario goals" ON goals
+  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Solo propietario debts" ON debts
+  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Solo propietario debtors" ON debtors
+  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Solo propietario savings" ON savings
+  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Solo propietario lottery" ON lottery
+  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Solo propietario transactions" ON transactions
+  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Solo propietario history" ON history
+  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
 -- ============================================
 -- VISTAS ÚTILES

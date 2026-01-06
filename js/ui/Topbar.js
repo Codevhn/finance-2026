@@ -10,6 +10,7 @@ import {
   notifySuccess,
   confirmDialog,
 } from "./notifications.js";
+import authManager from "../auth/AuthManager.js";
 
 export class Topbar {
   constructor() {
@@ -20,6 +21,8 @@ export class Topbar {
 
   render(title = "Dashboard") {
     this.currentTitle = title;
+    const user = authManager.getUser();
+    const userEmail = user?.email || "Usuario";
 
     this.container.innerHTML = `
       <div class="topbar__left">
@@ -33,6 +36,15 @@ export class Topbar {
         <button class="theme-toggle-btn" id="theme-toggle-btn" title="Cambiar tema">
           ${this.themeToggle.getTheme() === "light" ? "🌙" : "☀️"}
         </button>
+        <div class="topbar__user">
+          <div class="topbar__user-info">
+            <span class="topbar__user-name">${userEmail}</span>
+            <span class="topbar__user-status">Conectado</span>
+          </div>
+          <button class="btn btn--ghost btn--sm" id="logout-btn" title="Cerrar sesión">
+            🚪 Salir
+          </button>
+        </div>
         <button class="btn btn--secondary btn--sm" id="export-btn">
           <span>📥</span>
           <span>Exportar</span>
@@ -81,6 +93,26 @@ export class Topbar {
     if (importBtn) {
       importBtn.addEventListener("click", () => {
         this.handleImport();
+      });
+    }
+
+    // Logout button
+    const logoutBtn = this.container.querySelector("#logout-btn");
+    if (logoutBtn) {
+      logoutBtn.addEventListener("click", async () => {
+        logoutBtn.disabled = true;
+        logoutBtn.textContent = "Saliendo...";
+        try {
+          await authManager.signOut();
+          notifyInfo("Sesión cerrada");
+          window.location.reload();
+        } catch (error) {
+          console.error("Error al cerrar sesión:", error);
+          notifyError("No se pudo cerrar sesión");
+        } finally {
+          logoutBtn.disabled = false;
+          logoutBtn.textContent = "🚪 Salir";
+        }
       });
     }
   }
@@ -255,6 +287,30 @@ export class Topbar {
 
       .theme-toggle-btn:active {
         transform: scale(0.95);
+      }
+
+      .topbar__user {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+        padding: 0 var(--spacing-sm);
+        border-left: 1px solid var(--color-border);
+        border-right: 1px solid var(--color-border);
+      }
+
+      .topbar__user-info {
+        display: flex;
+        flex-direction: column;
+        line-height: 1.2;
+      }
+
+      .topbar__user-name {
+        font-weight: var(--font-weight-semibold);
+      }
+
+      .topbar__user-status {
+        font-size: var(--font-size-xs);
+        color: var(--color-text-secondary);
       }
 
       @media (max-width: 768px) {

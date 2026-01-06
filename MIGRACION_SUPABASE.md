@@ -31,6 +31,18 @@ VITE_SUPABASE_ANON_KEY=tu_clave_publica_aqui
 
 > ⚠️ **IMPORTANTE**: Agrega `.env` a tu `.gitignore` para no subir las credenciales
 
+### 1.3 Activar autenticación segura
+
+1. En Supabase, abre **Authentication** → **Providers**
+2. Activa **Email/Password** (puedes dejar desactivados los demás)
+3. Opcional: desactiva la confirmación de correo si solo tú usarás el sistema
+
+### 1.4 Crea tu usuario privado
+
+1. En **Authentication** → **Users**, haz clic en **Add user**
+2. Introduce tu correo y una contraseña segura
+3. Guarda los datos: solo esta cuenta tendrá acceso a la app
+
 ---
 
 ## 🗄️ Paso 2: Crear Esquema de Base de Datos
@@ -48,7 +60,7 @@ Esto creará:
 - ✅ 7 tablas principales
 - ✅ Índices para optimizar consultas
 - ✅ Triggers para actualizar timestamps
-- ✅ Políticas RLS (acceso público por defecto)
+- ✅ Políticas RLS por usuario autenticado
 - ✅ Vista de resumen financiero
 
 ### 2.2 Verificar Tablas
@@ -80,6 +92,8 @@ Los archivos necesarios ya están creados en tu proyecto:
 - `js/storage/SupabaseClient.js` - Cliente singleton
 - `js/storage/SyncManager.js` - Gestor de sincronización
 - `js/utils/DataMigration.js` - Herramienta de migración
+
+> 🔐 La aplicación muestra una pantalla de inicio de sesión y solo carga la información después de autenticarte con el usuario que creaste en Supabase.
 
 ---
 
@@ -174,24 +188,13 @@ En la página de configuración, puedes:
 
 ---
 
-## 🔐 Seguridad (Opcional)
+## 🔐 Seguridad y autenticación
 
-### Habilitar Autenticación
-
-Si quieres que cada usuario tenga sus propios datos:
-
-1. En Supabase, ve a **Authentication** → **Providers**
-2. Habilita Email/Password o proveedores sociales
-3. Modifica las políticas RLS en `schema.sql`:
-
-```sql
--- Ejemplo: Solo el usuario puede ver sus propios datos
-CREATE POLICY "Users can view own goals" ON goals
-  FOR SELECT USING (auth.uid() = user_id);
-```
-
-4. Agrega campo `user_id` a todas las tablas
-5. Implementa login/registro en tu app
+- Todas las tablas incluyen un campo `user_id` que se llena automáticamente con `auth.uid()`.
+- Las políticas RLS ya restringen todas las operaciones para que solo el usuario autenticado pueda leer o modificar registros.
+- El frontend bloquea el acceso total si no has iniciado sesión; además puedes cerrar sesión desde la barra superior.
+- Si necesitas invitar a otra persona, simplemente crea otra cuenta desde **Authentication** → **Users** y comparte sus credenciales. Cada cuenta verá únicamente sus datos por separado.
+- Para auditoría manual, recuerda añadir `user_id` en tus consultas SQL o usar la política por defecto ejecutando la consulta con un JWT de ese usuario.
 
 ---
 

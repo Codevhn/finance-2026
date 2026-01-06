@@ -41,6 +41,7 @@ class SupabaseClient {
         auth: {
           persistSession: true,
           autoRefreshToken: true,
+          detectSessionInUrl: true,
         },
         realtime: {
           params: {
@@ -85,6 +86,12 @@ class SupabaseClient {
   setCredentials(url, key) {
     localStorage.setItem("supabase_url", url);
     localStorage.setItem("supabase_key", key);
+
+    // Si ya había sesión previa, cerrarla para evitar inconsistencias
+    if (this.client && this.client.auth) {
+      this.client.auth.signOut().catch(() => {});
+    }
+
     this.isInitialized = false;
     this.client = null;
     return this.init();
@@ -100,9 +107,25 @@ class SupabaseClient {
       if (!client) return false;
 
       // No necesitamos datos, solo confirmar que la tabla es accesible
+      // Verificar sesión activa antes de consultar tablas protegidas
+      const {
+        data: { session },
+        error: sessionError,
+      } = await client.auth.getSession();
+
+      if (sessionError) throw sessionError;
+
+      if (!session) {
+        console.warn(
+          "⚠️ No hay sesión activa. Inicia sesión para verificar la conexión."
+        );
+        return false;
+      }
+
       const { error } = await client
         .from("goals")
-        .select("id", { head: true, count: "exact" });
+        .select("id", { head: true, count: "exact" })
+        .limit(1);
 
       if (error) {
         console.error("❌ Error al probar conexión:", error);
@@ -115,6 +138,76 @@ class SupabaseClient {
       console.error("❌ Error al probar conexión:", error);
       return false;
     }
+  }
+
+  /**
+   * Iniciar sesión
+   * @param {string} email
+   * @param {string} password
+   */
+  async signIn(email, password) {
+    const client = this.getClient();
+    if (!client) {
+      throw new Error("Supabase no está configurado");
+    }
+
+    const { data, error } = await client.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    return data;
+  }
+
+  /**
+   * Cerrar sesión
+   */
+  async signOut() {
+    const client = this.getClient();
+    if (!client) return;
+    const { error } = await client.auth.signOut();
+    if (error) throw error;
+  }
+
+  /**
+   * Obtener sesión actual
+   * @returns {Promise<Object|null>}
+   */
+  async getSession() {
+    const client = this.getClient();
+    if (!client) return null;
+    const {
+      data: { session },
+      error,
+    } = await client.auth.getSession();
+    if (error) throw error;
+    return session;
+  }
+
+  /**
+   * Escuchar cambios de autenticación
+   * @param {Function} callback
+   */
+  onAuthStateChange(callback) {
+    const client = this.getClient();
+    if (!client || !client.auth) {
+      console.warn("Supabase no inicializado, no se puede observar auth");
+      return () => {};
+    }
+
+    const { data } = client.auth.onAuthStateChange((event, session) => {
+      if (typeof callback === "function") {
+        callback(event, session);
+      }
+    });
+
+    return () => {
+      data?.subscription?.unsubscribe();
+    };
   }
 }
 

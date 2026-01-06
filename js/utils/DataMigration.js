@@ -5,6 +5,7 @@
 
 import supabaseClient from "../storage/SupabaseClient.js";
 import db from "../storage/db.js";
+import authManager from "../auth/AuthManager.js";
 
 export class DataMigration {
   constructor() {
@@ -23,6 +24,10 @@ export class DataMigration {
   async migrateAll() {
     if (this.migrationStatus.inProgress) {
       throw new Error("Migración ya en progreso");
+    }
+
+    if (!authManager.isAuthenticated()) {
+      throw new Error("Debes iniciar sesión antes de migrar datos");
     }
 
     const client = supabaseClient.getClient();
@@ -177,11 +182,17 @@ export class DataMigration {
    */
   convertToSupabaseFormat(record, tableName) {
     const { id, supabaseId, syncStatus, lastSyncedAt, ...data } = record;
+    const userId = authManager.getUser()?.id;
+
+    if (!userId) {
+      throw new Error("No hay usuario autenticado para migrar datos");
+    }
 
     // Mapeo de campos según la tabla
     const converted = {
       local_id: id,
       sync_status: "synced",
+      user_id: userId,
       ...data,
     };
 

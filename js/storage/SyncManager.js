@@ -5,6 +5,7 @@
 
 import supabaseClient from "./SupabaseClient.js";
 import db from "./db.js";
+import authManager from "../auth/AuthManager.js";
 
 class SyncManager {
   constructor() {
@@ -13,6 +14,15 @@ class SyncManager {
     this.syncInterval = null;
     this.autoSyncEnabled = true;
     this.syncIntervalMinutes = 5;
+  }
+
+  getCurrentUserId() {
+    return authManager.getUser()?.id || null;
+  }
+
+  getLastSyncKey(tableName) {
+    const userId = this.getCurrentUserId();
+    return userId ? `lastSync_${tableName}_${userId}` : `lastSync_${tableName}`;
   }
 
   /**
@@ -66,6 +76,11 @@ class SyncManager {
     if (!client) {
       console.log("⚠️ Supabase no configurado, omitiendo sincronización");
       return { success: false, message: "Supabase not configured" };
+    }
+
+    if (!authManager.isAuthenticated()) {
+      console.log("🔒 Usuario no autenticado, omitiendo sincronización remota");
+      return { success: false, message: "User not authenticated" };
     }
 
     this.isSyncing = true;
@@ -133,6 +148,12 @@ class SyncManager {
   async uploadPendingChanges(tableName) {
     const client = supabaseClient.getClient();
     const database = db.getDB();
+    const userId = this.getCurrentUserId();
+
+    if (!userId) {
+      console.warn("No hay usuario autenticado, se omite subida de cambios");
+      return 0;
+    }
 
     return new Promise((resolve, reject) => {
       const transaction = database.transaction([tableName], "readwrite");
@@ -206,11 +227,17 @@ class SyncManager {
   async downloadRemoteChanges(tableName) {
     const client = supabaseClient.getClient();
     const database = db.getDB();
+    const userId = this.getCurrentUserId();
+
+    if (!userId) {
+      console.warn("No hay usuario autenticado, se omite descarga");
+      return 0;
+    }
 
     try {
       // Obtener última fecha de sincronización
-      const lastSync =
-        localStorage.getItem(`lastSync_${tableName}`) || "1970-01-01";
+      const lastSyncKey = this.getLastSyncKey(tableName);
+      const lastSync = localStorage.getItem(lastSyncKey) || "1970-01-01";
 
       // Obtener registros actualizados desde la última sincronización
       const { data: remoteRecords, error } = await client
@@ -272,7 +299,7 @@ class SyncManager {
       // Actualizar última fecha de sincronización
       if (remoteRecords.length > 0) {
         const lastRecord = remoteRecords[remoteRecords.length - 1];
-        localStorage.setItem(`lastSync_${tableName}`, lastRecord.updated_at);
+        localStorage.setItem(lastSyncKey, lastRecord.updated_at);
       }
 
       return downloadedCount;
@@ -288,12 +315,18 @@ class SyncManager {
    * @returns {Object}
    */
   convertToSupabaseFormat(record) {
+    const userId = this.getCurrentUserId();
+    if (!userId) {
+      throw new Error("No hay usuario autenticado para sincronizar");
+    }
+
     const { id, supabaseId, syncStatus, lastSyncedAt, ...data } = record;
 
     return {
       ...data,
       local_id: id,
       sync_status: syncStatus || "synced",
+      user_id: userId,
     };
   }
 
@@ -303,8 +336,15 @@ class SyncManager {
    * @returns {Object}
    */
   convertToLocalFormat(record) {
-    const { id, local_id, sync_status, created_at, updated_at, ...data } =
-      record;
+    const {
+      id,
+      local_id,
+      sync_status,
+      created_at,
+      updated_at,
+      user_id,
+      ...data
+    } = record;
 
     return {
       ...data,
@@ -353,7 +393,8 @@ class SyncManager {
       lastSyncTime: this.lastSyncTime,
       autoSyncEnabled: this.autoSyncEnabled,
       syncIntervalMinutes: this.syncIntervalMinutes,
-      isConnected: supabaseClient.isConnected(),
+      isConnected: supabaseClient.isConnected() && authManager.isAuthenticated(),
+      userEmail: authManager.getUser()?.email || null,
     };
   }
 }

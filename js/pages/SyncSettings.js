@@ -8,12 +8,16 @@ import syncManager from "../storage/SyncManager.js";
 import { DataMigration } from "../utils/DataMigration.js";
 import toast from "../utils/Toast.js";
 import confirmDialog from "../utils/ConfirmDialog.js";
+import authManager from "../auth/AuthManager.js";
 
 export async function renderSyncSettings() {
   const container = document.getElementById("main-content");
 
   const status = syncManager.getStatus();
-  const isConnected = supabaseClient.isConnected();
+  const clientConfigured = supabaseClient.isConnected();
+  const isAuthenticated = authManager.isAuthenticated();
+  const userEmail = authManager.getUser()?.email || "Sin sesión";
+  const canSync = clientConfigured && isAuthenticated;
 
   // Obtener credenciales guardadas (sin mostrar la clave completa)
   const savedUrl = localStorage.getItem("supabase_url") || "";
@@ -37,14 +41,27 @@ export async function renderSyncSettings() {
             <div class="status-item">
               <span class="status-label">Estado:</span>
               <span class="status-badge ${
-                isConnected ? "status-badge--success" : "status-badge--error"
+                canSync ? "status-badge--success" : "status-badge--error"
               }">
-                ${isConnected ? "✅ Conectado" : "❌ Desconectado"}
+                ${
+                  canSync
+                    ? "✅ Conectado"
+                    : clientConfigured
+                    ? "🔒 Inicia sesión"
+                    : "⚠️ Sin credenciales"
+                }
               </span>
+            </div>
+
+            <div class="status-item">
+              <span class="status-label">Sesión:</span>
+              <span class="status-value">${
+                isAuthenticated ? `Activa (${userEmail})` : "No autenticado"
+              }</span>
             </div>
             
             ${
-              isConnected
+              canSync
                 ? `
               <div class="status-item">
                 <span class="status-label">Sincronización automática:</span>
@@ -87,7 +104,7 @@ export async function renderSyncSettings() {
           </div>
 
           ${
-            isConnected
+            canSync
               ? `
             <div class="button-group">
               <button class="btn btn--primary" id="btn-sync-now" ${
@@ -168,7 +185,7 @@ export async function renderSyncSettings() {
 
       <!-- Migración de Datos -->
       ${
-        isConnected
+        canSync
           ? `
         <div class="card">
           <div class="card-header">
@@ -269,6 +286,11 @@ function setupEventListeners() {
   const btnTestConnection = document.getElementById("btn-test-connection");
   if (btnTestConnection) {
     btnTestConnection.addEventListener("click", async () => {
+      if (!authManager.isAuthenticated()) {
+        toast.error("Debes iniciar sesión para probar la conexión.");
+        return;
+      }
+
       btnTestConnection.disabled = true;
       btnTestConnection.textContent = "🔄 Probando...";
 
