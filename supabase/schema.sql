@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS debts (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL DEFAULT auth.uid() REFERENCES auth.users (id) ON DELETE CASCADE,
   local_id INTEGER,
-  nombre TEXT NOT NULL,
+  nombre TEXT NOT NULL, 
   monto_total NUMERIC(10, 2) NOT NULL,
   monto_pagado NUMERIC(10, 2) DEFAULT 0,
   tasa_interes NUMERIC(5, 2) DEFAULT 0,
@@ -163,13 +163,13 @@ CREATE TABLE IF NOT EXISTS lottery (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+ALTER TABLE lottery ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users (id) ON DELETE CASCADE;
+ALTER TABLE lottery ALTER COLUMN user_id SET DEFAULT auth.uid();
+
 CREATE INDEX IF NOT EXISTS idx_lottery_fecha ON lottery(fecha);
 CREATE INDEX IF NOT EXISTS idx_lottery_tipo ON lottery(tipo);
 CREATE INDEX IF NOT EXISTS idx_lottery_sync_status ON lottery(sync_status);
 CREATE INDEX IF NOT EXISTS idx_lottery_user_id ON lottery(user_id);
-
-ALTER TABLE lottery ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users (id) ON DELETE CASCADE;
-ALTER TABLE lottery ALTER COLUMN user_id SET DEFAULT auth.uid();
 
 ALTER TABLE lottery ADD COLUMN IF NOT EXISTS nombre TEXT;
 ALTER TABLE lottery ADD COLUMN IF NOT EXISTS apuestas JSONB DEFAULT '[]'::jsonb;
@@ -194,14 +194,14 @@ CREATE TABLE IF NOT EXISTS transactions (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users (id) ON DELETE CASCADE;
+ALTER TABLE transactions ALTER COLUMN user_id SET DEFAULT auth.uid();
+
 CREATE INDEX IF NOT EXISTS idx_transactions_tipo ON transactions(tipo);
 CREATE INDEX IF NOT EXISTS idx_transactions_categoria ON transactions(categoria);
 CREATE INDEX IF NOT EXISTS idx_transactions_fecha ON transactions(fecha);
 CREATE INDEX IF NOT EXISTS idx_transactions_sync_status ON transactions(sync_status);
 CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id);
-
-ALTER TABLE transactions ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users (id) ON DELETE CASCADE;
-ALTER TABLE transactions ALTER COLUMN user_id SET DEFAULT auth.uid();
 
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}'::jsonb;
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMP WITH TIME ZONE;
@@ -223,14 +223,14 @@ CREATE TABLE IF NOT EXISTS history (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+ALTER TABLE history ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users (id) ON DELETE CASCADE;
+ALTER TABLE history ALTER COLUMN user_id SET DEFAULT auth.uid();
+
 CREATE INDEX IF NOT EXISTS idx_history_timestamp ON history(timestamp);
 CREATE INDEX IF NOT EXISTS idx_history_entity_type ON history(entity_type);
 CREATE INDEX IF NOT EXISTS idx_history_entity_id ON history(entity_id);
 CREATE INDEX IF NOT EXISTS idx_history_action ON history(action);
 CREATE INDEX IF NOT EXISTS idx_history_user_id ON history(user_id);
-
-ALTER TABLE history ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users (id) ON DELETE CASCADE;
-ALTER TABLE history ALTER COLUMN user_id SET DEFAULT auth.uid();
 ALTER TABLE history ADD COLUMN IF NOT EXISTS sync_status TEXT DEFAULT 'synced';
 ALTER TABLE history ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMP WITH TIME ZONE;
 ALTER TABLE history ADD COLUMN IF NOT EXISTS remote_id TEXT;
