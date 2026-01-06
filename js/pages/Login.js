@@ -8,8 +8,6 @@ import supabaseClient from "../storage/SupabaseClient.js";
 import toast from "../utils/Toast.js";
 
 let authScreen = null;
-let user = "codevhn@gmail.com";
-let password = "@Fiurer2b2%@";
 
 export function renderLogin(onSuccess) {
   const appContainer = document.querySelector(".app-container");
