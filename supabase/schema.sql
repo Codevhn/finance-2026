@@ -30,6 +30,9 @@ CREATE INDEX IF NOT EXISTS idx_goals_fecha_creacion ON goals(fecha_creacion);
 CREATE INDEX IF NOT EXISTS idx_goals_sync_status ON goals(sync_status);
 CREATE INDEX IF NOT EXISTS idx_goals_user_id ON goals(user_id);
 
+ALTER TABLE goals ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users (id) ON DELETE CASCADE;
+ALTER TABLE goals ALTER COLUMN user_id SET DEFAULT auth.uid();
+
 -- Campos extendidos para metas
 ALTER TABLE goals ADD COLUMN IF NOT EXISTS aportes JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE goals ADD COLUMN IF NOT EXISTS debt_id INTEGER;
@@ -65,6 +68,9 @@ CREATE INDEX IF NOT EXISTS idx_debts_fecha_creacion ON debts(fecha_creacion);
 CREATE INDEX IF NOT EXISTS idx_debts_sync_status ON debts(sync_status);
 CREATE INDEX IF NOT EXISTS idx_debts_user_id ON debts(user_id);
 
+ALTER TABLE debts ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users (id) ON DELETE CASCADE;
+ALTER TABLE debts ALTER COLUMN user_id SET DEFAULT auth.uid();
+
 -- Campos extendidos para deudas
 ALTER TABLE debts ADD COLUMN IF NOT EXISTS pagos JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE debts ADD COLUMN IF NOT EXISTS tipo TEXT DEFAULT 'me-deben';
@@ -98,6 +104,9 @@ CREATE INDEX IF NOT EXISTS idx_debtors_nombre ON debtors(nombre);
 CREATE INDEX IF NOT EXISTS idx_debtors_sync_status ON debtors(sync_status);
 CREATE INDEX IF NOT EXISTS idx_debtors_user_id ON debtors(user_id);
 
+ALTER TABLE debtors ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users (id) ON DELETE CASCADE;
+ALTER TABLE debtors ALTER COLUMN user_id SET DEFAULT auth.uid();
+
 ALTER TABLE debtors ADD COLUMN IF NOT EXISTS fecha_actualizacion TIMESTAMP WITH TIME ZONE;
 ALTER TABLE debtors ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMP WITH TIME ZONE;
 ALTER TABLE debtors ADD COLUMN IF NOT EXISTS remote_id TEXT;
@@ -124,6 +133,9 @@ CREATE TABLE IF NOT EXISTS savings (
 CREATE INDEX IF NOT EXISTS idx_savings_fecha_creacion ON savings(fecha_creacion);
 CREATE INDEX IF NOT EXISTS idx_savings_sync_status ON savings(sync_status);
 CREATE INDEX IF NOT EXISTS idx_savings_user_id ON savings(user_id);
+
+ALTER TABLE savings ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users (id) ON DELETE CASCADE;
+ALTER TABLE savings ALTER COLUMN user_id SET DEFAULT auth.uid();
 
 ALTER TABLE savings ADD COLUMN IF NOT EXISTS depositos JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE savings ADD COLUMN IF NOT EXISTS intocable BOOLEAN DEFAULT FALSE;
@@ -156,6 +168,9 @@ CREATE INDEX IF NOT EXISTS idx_lottery_tipo ON lottery(tipo);
 CREATE INDEX IF NOT EXISTS idx_lottery_sync_status ON lottery(sync_status);
 CREATE INDEX IF NOT EXISTS idx_lottery_user_id ON lottery(user_id);
 
+ALTER TABLE lottery ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users (id) ON DELETE CASCADE;
+ALTER TABLE lottery ALTER COLUMN user_id SET DEFAULT auth.uid();
+
 ALTER TABLE lottery ADD COLUMN IF NOT EXISTS nombre TEXT;
 ALTER TABLE lottery ADD COLUMN IF NOT EXISTS apuestas JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE lottery ADD COLUMN IF NOT EXISTS premios JSONB DEFAULT '[]'::jsonb;
@@ -185,6 +200,9 @@ CREATE INDEX IF NOT EXISTS idx_transactions_fecha ON transactions(fecha);
 CREATE INDEX IF NOT EXISTS idx_transactions_sync_status ON transactions(sync_status);
 CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id);
 
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users (id) ON DELETE CASCADE;
+ALTER TABLE transactions ALTER COLUMN user_id SET DEFAULT auth.uid();
+
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}'::jsonb;
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMP WITH TIME ZONE;
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS remote_id TEXT;
@@ -211,6 +229,8 @@ CREATE INDEX IF NOT EXISTS idx_history_entity_id ON history(entity_id);
 CREATE INDEX IF NOT EXISTS idx_history_action ON history(action);
 CREATE INDEX IF NOT EXISTS idx_history_user_id ON history(user_id);
 
+ALTER TABLE history ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users (id) ON DELETE CASCADE;
+ALTER TABLE history ALTER COLUMN user_id SET DEFAULT auth.uid();
 ALTER TABLE history ADD COLUMN IF NOT EXISTS sync_status TEXT DEFAULT 'synced';
 ALTER TABLE history ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMP WITH TIME ZONE;
 ALTER TABLE history ADD COLUMN IF NOT EXISTS remote_id TEXT;
