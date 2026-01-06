@@ -30,6 +30,16 @@ CREATE INDEX idx_goals_fecha_creacion ON goals(fecha_creacion);
 CREATE INDEX idx_goals_sync_status ON goals(sync_status);
 CREATE INDEX idx_goals_user_id ON goals(user_id);
 
+-- Campos extendidos para metas
+ALTER TABLE goals ADD COLUMN IF NOT EXISTS aportes JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE goals ADD COLUMN IF NOT EXISTS debt_id INTEGER;
+ALTER TABLE goals ADD COLUMN IF NOT EXISTS debt_nombre TEXT;
+ALTER TABLE goals ADD COLUMN IF NOT EXISTS debt_application JSONB;
+ALTER TABLE goals ADD COLUMN IF NOT EXISTS fecha_limite TIMESTAMP WITH TIME ZONE;
+ALTER TABLE goals ADD COLUMN IF NOT EXISTS ciclo_actual INTEGER DEFAULT 1;
+ALTER TABLE goals ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMP WITH TIME ZONE;
+ALTER TABLE goals ADD COLUMN IF NOT EXISTS remote_id TEXT;
+
 -- ============================================
 -- TABLA: debts (Deudas)
 -- ============================================
@@ -55,6 +65,17 @@ CREATE INDEX idx_debts_fecha_creacion ON debts(fecha_creacion);
 CREATE INDEX idx_debts_sync_status ON debts(sync_status);
 CREATE INDEX idx_debts_user_id ON debts(user_id);
 
+-- Campos extendidos para deudas
+ALTER TABLE debts ADD COLUMN IF NOT EXISTS pagos JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE debts ADD COLUMN IF NOT EXISTS tipo TEXT DEFAULT 'me-deben';
+ALTER TABLE debts ADD COLUMN IF NOT EXISTS persona_id INTEGER;
+ALTER TABLE debts ADD COLUMN IF NOT EXISTS persona_nombre TEXT;
+ALTER TABLE debts ADD COLUMN IF NOT EXISTS persona_contacto TEXT;
+ALTER TABLE debts ADD COLUMN IF NOT EXISTS fecha_inicio TIMESTAMP WITH TIME ZONE;
+ALTER TABLE debts ADD COLUMN IF NOT EXISTS fecha_archivado TIMESTAMP WITH TIME ZONE;
+ALTER TABLE debts ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMP WITH TIME ZONE;
+ALTER TABLE debts ADD COLUMN IF NOT EXISTS remote_id TEXT;
+
 -- ============================================
 -- TABLA: debtors (Personas deudoras)
 -- ============================================
@@ -76,6 +97,10 @@ CREATE TABLE IF NOT EXISTS debtors (
 CREATE INDEX idx_debtors_nombre ON debtors(nombre);
 CREATE INDEX idx_debtors_sync_status ON debtors(sync_status);
 CREATE INDEX idx_debtors_user_id ON debtors(user_id);
+
+ALTER TABLE debtors ADD COLUMN IF NOT EXISTS fecha_actualizacion TIMESTAMP WITH TIME ZONE;
+ALTER TABLE debtors ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMP WITH TIME ZONE;
+ALTER TABLE debtors ADD COLUMN IF NOT EXISTS remote_id TEXT;
 
 -- ============================================
 -- TABLA: savings (Ahorros)
@@ -100,6 +125,16 @@ CREATE INDEX idx_savings_fecha_creacion ON savings(fecha_creacion);
 CREATE INDEX idx_savings_sync_status ON savings(sync_status);
 CREATE INDEX idx_savings_user_id ON savings(user_id);
 
+ALTER TABLE savings ADD COLUMN IF NOT EXISTS depositos JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE savings ADD COLUMN IF NOT EXISTS intocable BOOLEAN DEFAULT FALSE;
+ALTER TABLE savings ADD COLUMN IF NOT EXISTS meta_anual BOOLEAN DEFAULT FALSE;
+ALTER TABLE savings ADD COLUMN IF NOT EXISTS anio_meta INTEGER;
+ALTER TABLE savings ADD COLUMN IF NOT EXISTS monto_acumulado NUMERIC(10, 2);
+ALTER TABLE savings ADD COLUMN IF NOT EXISTS objetivo_opcional NUMERIC(10, 2);
+ALTER TABLE savings ADD COLUMN IF NOT EXISTS ultima_evaluacion JSONB;
+ALTER TABLE savings ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMP WITH TIME ZONE;
+ALTER TABLE savings ADD COLUMN IF NOT EXISTS remote_id TEXT;
+
 -- ============================================
 -- TABLA: lottery (Lotería)
 -- ============================================
@@ -120,6 +155,12 @@ CREATE INDEX idx_lottery_fecha ON lottery(fecha);
 CREATE INDEX idx_lottery_tipo ON lottery(tipo);
 CREATE INDEX idx_lottery_sync_status ON lottery(sync_status);
 CREATE INDEX idx_lottery_user_id ON lottery(user_id);
+
+ALTER TABLE lottery ADD COLUMN IF NOT EXISTS nombre TEXT;
+ALTER TABLE lottery ADD COLUMN IF NOT EXISTS apuestas JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE lottery ADD COLUMN IF NOT EXISTS premios JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE lottery ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMP WITH TIME ZONE;
+ALTER TABLE lottery ADD COLUMN IF NOT EXISTS remote_id TEXT;
 
 -- ============================================
 -- TABLA: transactions (Transacciones generales)
@@ -144,6 +185,10 @@ CREATE INDEX idx_transactions_fecha ON transactions(fecha);
 CREATE INDEX idx_transactions_sync_status ON transactions(sync_status);
 CREATE INDEX idx_transactions_user_id ON transactions(user_id);
 
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMP WITH TIME ZONE;
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS remote_id TEXT;
+
 -- ============================================
 -- TABLA: history (Historial de auditoría)
 -- ============================================
@@ -165,6 +210,10 @@ CREATE INDEX idx_history_entity_type ON history(entity_type);
 CREATE INDEX idx_history_entity_id ON history(entity_id);
 CREATE INDEX idx_history_action ON history(action);
 CREATE INDEX idx_history_user_id ON history(user_id);
+
+ALTER TABLE history ADD COLUMN IF NOT EXISTS sync_status TEXT DEFAULT 'synced';
+ALTER TABLE history ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMP WITH TIME ZONE;
+ALTER TABLE history ADD COLUMN IF NOT EXISTS remote_id TEXT;
 
 -- ============================================
 -- TRIGGERS PARA ACTUALIZAR updated_at

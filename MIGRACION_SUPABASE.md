@@ -75,6 +75,8 @@ En el panel de Supabase, ve a **Table Editor** y verifica que se crearon:
 - `transactions`
 - `history`
 
+> ℹ️ El script agrega automáticamente columnas JSON (aportes, pagos, depositos, metadata, etc.) para reflejar todos los campos que usa la app. Si ya tenías el esquema anterior, vuelve a ejecutar `supabase/schema.sql`; las nuevas columnas se crearán con `ALTER TABLE IF NOT EXISTS` sin borrar datos.
+
 ---
 
 ## 📦 Paso 3: Instalar Dependencias
@@ -118,6 +120,8 @@ import { DataMigration } from "./js/utils/DataMigration.js";
 const migration = new DataMigration();
 await migration.migrateAll();
 ```
+
+> ⚠️ Si durante la migración ves mensajes como `PGRST204 ... column ...`, significa que falta actualizar el esquema en Supabase. Corre nuevamente `supabase/schema.sql` en el SQL Editor para crear las columnas (aportes, pagos, depositos, etc.) y vuelve a ejecutar la migración.
 
 ---
 

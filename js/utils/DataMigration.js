@@ -6,6 +6,7 @@
 import supabaseClient from "../storage/SupabaseClient.js";
 import db from "../storage/db.js";
 import authManager from "../auth/AuthManager.js";
+import { formatRecordForSupabase } from "../storage/SupabaseMapper.js";
 
 export class DataMigration {
   constructor() {
@@ -119,12 +120,17 @@ export class DataMigration {
     let migrated = 0;
     let skipped = 0;
 
+    const userId = authManager.getUser()?.id;
+    if (!userId) {
+      throw new Error("No hay usuario autenticado para migrar datos");
+    }
+
     // Migrar en lotes de 100 registros
     const batchSize = 100;
     for (let i = 0; i < localRecords.length; i += batchSize) {
       const batch = localRecords.slice(i, i + batchSize);
       const supabaseRecords = batch.map((record) =>
-        this.convertToSupabaseFormat(record, tableName)
+        formatRecordForSupabase(record, tableName, userId)
       );
 
       try {
@@ -172,82 +178,6 @@ export class DataMigration {
     }
 
     return { migrated, skipped };
-  }
-
-  /**
-   * Convertir registro local a formato Supabase
-   * @param {Object} record
-   * @param {string} tableName
-   * @returns {Object}
-   */
-  convertToSupabaseFormat(record, tableName) {
-    const { id, supabaseId, syncStatus, lastSyncedAt, ...data } = record;
-    const userId = authManager.getUser()?.id;
-
-    if (!userId) {
-      throw new Error("No hay usuario autenticado para migrar datos");
-    }
-
-    // Mapeo de campos según la tabla
-    const converted = {
-      local_id: id,
-      sync_status: "synced",
-      user_id: userId,
-      ...data,
-    };
-
-    // Convertir fechas a formato ISO si es necesario
-    if (converted.fechaCreacion) {
-      converted.fecha_creacion = new Date(
-        converted.fechaCreacion
-      ).toISOString();
-      delete converted.fechaCreacion;
-    }
-
-    if (converted.fechaCompletada) {
-      converted.fecha_completada = new Date(
-        converted.fechaCompletada
-      ).toISOString();
-      delete converted.fechaCompletada;
-    }
-
-    if (converted.fechaVencimiento) {
-      converted.fecha_vencimiento = new Date(converted.fechaVencimiento)
-        .toISOString()
-        .split("T")[0];
-      delete converted.fechaVencimiento;
-    }
-
-    if (converted.fechaObjetivo) {
-      converted.fecha_objetivo = new Date(converted.fechaObjetivo)
-        .toISOString()
-        .split("T")[0];
-      delete converted.fechaObjetivo;
-    }
-
-    // Convertir nombres de campos snake_case
-    const fieldMapping = {
-      montoObjetivo: "monto_objetivo",
-      montoActual: "monto_actual",
-      montoTotal: "monto_total",
-      montoPagado: "monto_pagado",
-      tasaInteres: "tasa_interes",
-      montoTotalPrestado: "monto_total_prestado",
-      montoTotalPagado: "monto_total_pagado",
-      entityType: "entity_type",
-      entityId: "entity_id",
-      oldValue: "old_value",
-      newValue: "new_value",
-    };
-
-    Object.keys(fieldMapping).forEach((oldKey) => {
-      if (converted[oldKey] !== undefined) {
-        converted[fieldMapping[oldKey]] = converted[oldKey];
-        delete converted[oldKey];
-      }
-    });
-
-    return converted;
   }
 
   /**

@@ -6,6 +6,10 @@
 import supabaseClient from "./SupabaseClient.js";
 import db from "./db.js";
 import authManager from "../auth/AuthManager.js";
+import {
+  formatRecordForSupabase,
+  mapRecordFromSupabase,
+} from "./SupabaseMapper.js";
 
 class SyncManager {
   constructor() {
@@ -173,7 +177,10 @@ class SyncManager {
 
         for (const record of pendingRecords) {
           try {
-            const supabaseData = this.convertToSupabaseFormat(record);
+            const supabaseData = this.convertToSupabaseFormat(
+              record,
+              tableName
+            );
 
             if (record.supabaseId) {
               // Actualizar registro existente
@@ -259,7 +266,7 @@ class SyncManager {
 
       for (const remoteRecord of remoteRecords) {
         try {
-          const localData = this.convertToLocalFormat(remoteRecord);
+          const localData = this.convertToLocalFormat(remoteRecord, tableName);
 
           // Buscar si existe localmente por supabaseId
           const existingRecords = await new Promise((resolve, reject) => {
@@ -314,20 +321,12 @@ class SyncManager {
    * @param {Object} record
    * @returns {Object}
    */
-  convertToSupabaseFormat(record) {
+  convertToSupabaseFormat(record, tableName) {
     const userId = this.getCurrentUserId();
     if (!userId) {
       throw new Error("No hay usuario autenticado para sincronizar");
     }
-
-    const { id, supabaseId, syncStatus, lastSyncedAt, ...data } = record;
-
-    return {
-      ...data,
-      local_id: id,
-      sync_status: syncStatus || "synced",
-      user_id: userId,
-    };
+    return formatRecordForSupabase(record, tableName, userId);
   }
 
   /**
@@ -335,23 +334,8 @@ class SyncManager {
    * @param {Object} record
    * @returns {Object}
    */
-  convertToLocalFormat(record) {
-    const {
-      id,
-      local_id,
-      sync_status,
-      created_at,
-      updated_at,
-      user_id,
-      ...data
-    } = record;
-
-    return {
-      ...data,
-      supabaseId: id,
-      syncStatus: "synced",
-      lastSyncedAt: updated_at,
-    };
+  convertToLocalFormat(record, tableName) {
+    return mapRecordFromSupabase(record, tableName);
   }
 
   /**
