@@ -168,7 +168,12 @@ function injectAuthStyles() {
     .auth-screen {
       position: fixed;
       inset: 0;
-      background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 64, 175, 0.85));
+      background: linear-gradient(
+          135deg,
+          rgba(15, 23, 42, 0.92),
+          rgba(59, 130, 246, 0.25)
+        ),
+        var(--color-bg-primary);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -179,16 +184,13 @@ function injectAuthStyles() {
     .auth-card {
       width: 100%;
       max-width: 420px;
-      background: rgba(255, 255, 255, 0.97);
+      background: var(--color-surface);
+      color: var(--color-text-primary);
       border-radius: 24px;
-      padding: 2rem;
-      box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.45);
+      padding: 2.25rem;
+      border: 1px solid var(--color-border);
+      box-shadow: var(--shadow-xl);
       position: relative;
-    }
-
-    body.dark-theme .auth-card {
-      background: rgba(15, 23, 42, 0.9);
-      color: #f1f5f9;
     }
 
     .auth-card__header h1 {
@@ -199,11 +201,7 @@ function injectAuthStyles() {
 
     .auth-card__header p {
       margin: 0.25rem 0 1.5rem;
-      color: #475569;
-    }
-
-    body.dark-theme .auth-card__header p {
-      color: #cbd5f5;
+      color: var(--color-text-secondary);
     }
 
     .auth-card form {
@@ -220,10 +218,10 @@ function injectAuthStyles() {
     }
 
     .auth-card__credentials {
-      border: 1px solid rgba(148, 163, 184, 0.4);
+      border: 1px solid var(--color-border);
       border-radius: 12px;
       padding: 0.75rem 1rem;
-      background: rgba(148, 163, 184, 0.1);
+      background: rgba(59, 130, 246, 0.05);
     }
 
     .auth-card__credentials summary {
@@ -249,20 +247,15 @@ function injectAuthStyles() {
     .auth-card .form-input {
       padding: 0.75rem;
       border-radius: 12px;
-      border: 1px solid rgba(148, 163, 184, 0.6);
+      border: 1px solid var(--color-border);
       font-size: 1rem;
-      background: white;
-    }
-
-    body.dark-theme .auth-card .form-input {
-      background: rgba(15, 23, 42, 0.7);
-      color: #f8fafc;
-      border-color: rgba(148, 163, 184, 0.3);
+      background: var(--color-bg-tertiary);
+      color: var(--color-text-primary);
     }
 
     .auth-card .form-hint {
       font-size: 0.85rem;
-      color: #64748b;
+      color: var(--color-text-tertiary);
       margin: 0 0 0.5rem;
     }
 
