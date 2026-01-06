@@ -1,0 +1,245 @@
+/**
+ * Lottery Entity - Lotería
+ * Maneja apuestas, premios y cálculos automáticos (ROI, neto, costo de oportunidad)
+ */
+
+export class Lottery {
+  constructor(data = {}) {
+    this.id = data.id || null;
+    this.nombre = data.nombre || "Lotería";
+    this.apuestas = data.apuestas || []; // Array de { monto, fecha, descripcion }
+    this.premios = data.premios || []; // Array de { monto, fecha, descripcion }
+    this.fechaCreacion = data.fechaCreacion || new Date().toISOString();
+
+    // Campos para sincronización futura
+    this.syncStatus = data.syncStatus || "local";
+    this.lastSyncedAt = data.lastSyncedAt || null;
+    this.remoteId = data.remoteId || null;
+  }
+
+  /**
+   * Registrar una apuesta (egreso)
+   * @param {number} monto - Monto apostado en Lempiras
+   * @param {string} descripcion - Descripción de la apuesta
+   * @returns {Object}
+   */
+  registrarApuesta(monto, descripcion = "") {
+    if (monto <= 0) {
+      return { success: false, error: "El monto debe ser mayor a 0" };
+    }
+
+    const apuesta = {
+      monto: parseFloat(monto),
+      fecha: new Date().toISOString(),
+      descripcion: descripcion.trim(),
+    };
+
+    this.apuestas.push(apuesta);
+    this.syncStatus = "pending";
+
+    return {
+      success: true,
+      apuesta,
+      totalApostado: this.getTotalApostado(),
+      neto: this.calcularNeto(),
+      roi: this.calcularROI(),
+    };
+  }
+
+  /**
+   * Registrar un premio (ingreso)
+   * @param {number} monto - Monto ganado en Lempiras
+   * @param {string} descripcion - Descripción del premio
+   * @returns {Object}
+   */
+  registrarPremio(monto, descripcion = "") {
+    if (monto <= 0) {
+      return { success: false, error: "El monto debe ser mayor a 0" };
+    }
+
+    const premio = {
+      monto: parseFloat(monto),
+      fecha: new Date().toISOString(),
+      descripcion: descripcion.trim(),
+    };
+
+    this.premios.push(premio);
+    this.syncStatus = "pending";
+
+    return {
+      success: true,
+      premio,
+      totalGanado: this.getTotalGanado(),
+      neto: this.calcularNeto(),
+      roi: this.calcularROI(),
+    };
+  }
+
+  /**
+   * Obtener total apostado
+   * @returns {number}
+   */
+  getTotalApostado() {
+    return this.apuestas.reduce((sum, apuesta) => sum + apuesta.monto, 0);
+  }
+
+  /**
+   * Obtener total ganado en premios
+   * @returns {number}
+   */
+  getTotalGanado() {
+    return this.premios.reduce((sum, premio) => sum + premio.monto, 0);
+  }
+
+  /**
+   * Calcular el neto (ganado - apostado)
+   * @returns {number} - Positivo = ganancia, Negativo = pérdida
+   */
+  calcularNeto() {
+    return this.getTotalGanado() - this.getTotalApostado();
+  }
+
+  /**
+   * Calcular ROI (Return on Investment)
+   * @returns {number|null} - Porcentaje de retorno o null si no hay apuestas
+   */
+  calcularROI() {
+    const totalApostado = this.getTotalApostado();
+    if (totalApostado === 0) return null;
+
+    const neto = this.calcularNeto();
+    return (neto / totalApostado) * 100;
+  }
+
+  /**
+   * Calcular pérdidas acumuladas (solo valores negativos)
+   * @returns {number}
+   */
+  calcularPerdidasAcumuladas() {
+    const neto = this.calcularNeto();
+    return neto < 0 ? Math.abs(neto) : 0;
+  }
+
+  /**
+   * Calcular costo de oportunidad
+   * Asume una tasa de retorno conservadora del 5% anual en inversión
+   * @param {number} tasaAnual - Tasa de retorno anual (default 5%)
+   * @returns {number}
+   */
+  calcularCostoOportunidad(tasaAnual = 5) {
+    const totalApostado = this.getTotalApostado();
+    if (totalApostado === 0) return 0;
+
+    // Calcular tiempo promedio desde la primera apuesta
+    if (this.apuestas.length === 0) return 0;
+
+    const fechaPrimeraApuesta = new Date(this.apuestas[0].fecha);
+    const ahora = new Date();
+    const diasTranscurridos =
+      (ahora - fechaPrimeraApuesta) / (1000 * 60 * 60 * 24);
+    const añosTranscurridos = diasTranscurridos / 365;
+
+    // Cálculo simple de interés compuesto
+    const valorPotencial =
+      totalApostado * Math.pow(1 + tasaAnual / 100, añosTranscurridos);
+    const costoOportunidad = valorPotencial - totalApostado;
+
+    return costoOportunidad;
+  }
+
+  /**
+   * Obtener estadísticas completas
+   * @returns {Object}
+   */
+  getEstadisticas() {
+    return {
+      totalApostado: this.getTotalApostado(),
+      totalGanado: this.getTotalGanado(),
+      neto: this.calcularNeto(),
+      roi: this.calcularROI(),
+      perdidasAcumuladas: this.calcularPerdidasAcumuladas(),
+      costoOportunidad: this.calcularCostoOportunidad(),
+      numeroApuestas: this.apuestas.length,
+      numeroPremios: this.premios.length,
+      promedioApuesta:
+        this.apuestas.length > 0
+          ? this.getTotalApostado() / this.apuestas.length
+          : 0,
+      promedioPremio:
+        this.premios.length > 0
+          ? this.getTotalGanado() / this.premios.length
+          : 0,
+    };
+  }
+
+  /**
+   * Obtener historial combinado de apuestas y premios
+   * @param {number} limit - Límite de resultados
+   * @returns {Array}
+   */
+  getHistorial(limit = null) {
+    const apuestasConTipo = this.apuestas.map((a) => ({
+      ...a,
+      tipo: "apuesta",
+    }));
+    const premiosConTipo = this.premios.map((p) => ({ ...p, tipo: "premio" }));
+
+    const historial = [...apuestasConTipo, ...premiosConTipo].sort(
+      (a, b) => new Date(b.fecha) - new Date(a.fecha)
+    );
+
+    return limit ? historial.slice(0, limit) : historial;
+  }
+
+  /**
+   * Obtener estadísticas por rango de fechas
+   * @param {Date} fechaInicio
+   * @param {Date} fechaFin
+   * @returns {Object}
+   */
+  getEstadisticasPorRango(fechaInicio, fechaFin) {
+    const apuestasFiltradas = this.apuestas.filter((a) => {
+      const fecha = new Date(a.fecha);
+      return fecha >= fechaInicio && fecha <= fechaFin;
+    });
+
+    const premiosFiltrados = this.premios.filter((p) => {
+      const fecha = new Date(p.fecha);
+      return fecha >= fechaInicio && fecha <= fechaFin;
+    });
+
+    const totalApostado = apuestasFiltradas.reduce(
+      (sum, a) => sum + a.monto,
+      0
+    );
+    const totalGanado = premiosFiltrados.reduce((sum, p) => sum + p.monto, 0);
+    const neto = totalGanado - totalApostado;
+    const roi = totalApostado > 0 ? (neto / totalApostado) * 100 : null;
+
+    return {
+      totalApostado,
+      totalGanado,
+      neto,
+      roi,
+      numeroApuestas: apuestasFiltradas.length,
+      numeroPremios: premiosFiltrados.length,
+    };
+  }
+
+  /**
+   * Convertir a objeto plano para almacenamiento
+   * @returns {Object}
+   */
+  toJSON() {
+    return {
+      id: this.id,
+      nombre: this.nombre,
+      apuestas: this.apuestas,
+      premios: this.premios,
+      fechaCreacion: this.fechaCreacion,
+      syncStatus: this.syncStatus,
+      lastSyncedAt: this.lastSyncedAt,
+      remoteId: this.remoteId,
+    };
+  }
+}
