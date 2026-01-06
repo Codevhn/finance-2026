@@ -24,7 +24,8 @@ export function renderLogin(onSuccess) {
 
   const savedUrl = localStorage.getItem("supabase_url") || "";
   const savedKey = localStorage.getItem("supabase_key") || "";
-  const credentialsOpen = !savedUrl || !savedKey;
+  const needsCredentials = !savedUrl || !savedKey;
+  const credentialsOpen = needsCredentials;
 
   authScreen.innerHTML = `
     <div class="auth-card">
@@ -60,9 +61,15 @@ export function renderLogin(onSuccess) {
           >
         </div>
 
-        <details class="auth-card__credentials" ${credentialsOpen ? "open" : ""}>
-          <summary>Configurar credenciales de Supabase</summary>
-          <p class="form-hint">Estas credenciales se guardan solo en este navegador.</p>
+        <details class="auth-card__credentials" ${
+          credentialsOpen ? "open" : ""
+        }>
+          <summary>Configuración avanzada de Supabase</summary>
+          <p class="form-hint">
+            Estas credenciales se guardan localmente. Solo necesitas
+            cambiarlas si migras a otro proyecto; normalmente se administran
+            desde Configuración → Sincronización después de iniciar sesión.
+          </p>
 
           <div class="form-group">
             <label for="auth-supabase-url">URL del Proyecto</label>
@@ -72,7 +79,7 @@ export function renderLogin(onSuccess) {
               class="form-input" 
               placeholder="https://xxxxx.supabase.co"
               value="${savedUrl}"
-              required
+              ${needsCredentials ? "required" : ""}
             >
           </div>
 
@@ -84,7 +91,7 @@ export function renderLogin(onSuccess) {
               class="form-input" 
               placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
               value="${savedKey}"
-              required
+              ${needsCredentials ? "required" : ""}
             >
           </div>
         </details>
@@ -110,17 +117,39 @@ export function renderLogin(onSuccess) {
 
     const email = document.getElementById("auth-email").value.trim();
     const password = document.getElementById("auth-password").value.trim();
-    const supabaseUrl = document.getElementById("auth-supabase-url").value.trim();
+    const supabaseUrl = document
+      .getElementById("auth-supabase-url")
+      .value.trim();
     const supabaseKey = document
       .getElementById("auth-supabase-key")
       .value.trim();
 
     try {
-      if (!supabaseUrl || !supabaseKey) {
-        throw new Error("Configura la URL y la clave pública de Supabase");
+      if (needsCredentials && (!supabaseUrl || !supabaseKey)) {
+        throw new Error(
+          "Configura la URL y la clave pública de Supabase para continuar."
+        );
       }
 
-      supabaseClient.setCredentials(supabaseUrl, supabaseKey);
+      if (
+        (supabaseUrl && !supabaseKey) ||
+        (!supabaseUrl && supabaseKey)
+      ) {
+        throw new Error(
+          "Para actualizar la conexión necesitas ingresar URL y clave."
+        );
+      }
+
+      const shouldUpdateCredentials =
+        supabaseUrl &&
+        supabaseKey &&
+        (supabaseUrl !== savedUrl || supabaseKey !== savedKey);
+
+      if (shouldUpdateCredentials) {
+        supabaseClient.setCredentials(supabaseUrl, supabaseKey);
+      } else if (!supabaseClient.isConnected()) {
+        supabaseClient.init();
+      }
       await authManager.signIn(email, password);
 
       toast.success("Bienvenido 👋");
