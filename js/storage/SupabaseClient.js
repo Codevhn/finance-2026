@@ -86,12 +86,6 @@ class SupabaseClient {
   setCredentials(url, key) {
     localStorage.setItem("supabase_url", url);
     localStorage.setItem("supabase_key", key);
-
-    // Si ya había sesión previa, cerrarla para evitar inconsistencias
-    if (this.client && this.client.auth) {
-      this.client.auth.signOut().catch(() => {});
-    }
-
     this.isInitialized = false;
     this.client = null;
     return this.init();
