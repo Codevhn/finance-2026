@@ -218,6 +218,9 @@ export class Goal {
    * @returns {Object}
    */
   toJSON() {
+    if (!this || typeof this !== "object") {
+      return {};
+    }
     const json = {
       nombre: this.nombre,
       montoObjetivo: this.montoObjetivo,
