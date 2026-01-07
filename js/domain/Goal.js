@@ -193,9 +193,18 @@ export class Goal {
       } else if (this.fechaCreacion) {
         const startDate = new Date(this.fechaCreacion);
         if (!Number.isNaN(startDate.getTime()) && dueDate < startDate) {
-          errores.push("La fecha límite debe ser posterior a la fecha de creación");
+          errores.push(
+            "La fecha límite debe ser posterior a la fecha de creación"
+          );
         }
       }
+    }
+
+    if (
+      this.aporteSugeridoDiario !== null &&
+      Number(this.aporteSugeridoDiario) < 0
+    ) {
+      errores.push("El aporte sugerido debe ser un número positivo");
     }
 
     return {
@@ -235,9 +244,3 @@ export class Goal {
     return json;
   }
 }
-    if (
-      this.aporteSugeridoDiario !== null &&
-      Number(this.aporteSugeridoDiario) < 0
-    ) {
-      errores.push("El aporte sugerido debe ser un número positivo");
-    }
