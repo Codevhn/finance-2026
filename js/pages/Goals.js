@@ -76,6 +76,16 @@ export async function renderGoals() {
               </div>
 
               <div class="form-group">
+                <label class="form-label" for="goal-savings">Transferir a un ahorro anual (opcional)</label>
+                <select id="goal-savings" class="form-input">
+                  ${renderAnnualSavingsOptions()}
+                </select>
+                <small style="display:block; font-size: var(--font-size-xs); color: var(--color-text-tertiary);">
+                  Al completar la meta, enviaremos automáticamente el monto de este ciclo al ahorro anual que elijas.
+                </small>
+              </div>
+
+              <div class="form-group">
                 <label class="form-label" for="goal-due-date">Fecha límite para completar (opcional)</label>
                 <input type="date" id="goal-due-date" class="form-input">
                 <small style="display:block; font-size: var(--font-size-xs); color: var(--color-text-tertiary);">
