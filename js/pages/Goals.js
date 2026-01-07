@@ -474,6 +474,9 @@ function renderGoalCard(goal) {
                     <div style="font-size: var(--font-size-xs); color: var(--color-text-tertiary);">
                       ${new Date(aporte.fecha).toLocaleDateString("es-HN")}
                     </div>
+                    <div style="font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); color: var(--color-text-primary);">
+                      ${formatCurrency(aporte.monto)}
+                    </div>
                     <div style="font-size: var(--font-size-xs); margin-top: var(--spacing-xxs); color: ${
                       aporte.nota
                         ? "var(--color-text-secondary)"
@@ -481,11 +484,18 @@ function renderGoalCard(goal) {
                     };">
                       ${aporte.nota ? aporte.nota : "Sin nota registrada"}
                     </div>
-                    <button type="button" class="btn btn--ghost btn--sm" style="padding: var(--spacing-xxs) var(--spacing-xs); margin-top: var(--spacing-xxs); font-size: var(--font-size-xs);" onclick="window.editGoalContributionNote(${
-                      goal.id
-                    }, ${originalIndex})">
-                      📝 ${aporte.nota ? "Editar nota" : "Agregar nota"}
-                    </button>
+                    <div style="display:flex; gap: var(--spacing-xxs); flex-wrap: wrap; margin-top: var(--spacing-xxs);">
+                      <button type="button" class="btn btn--ghost btn--sm" style="padding: var(--spacing-xxs) var(--spacing-xs); font-size: var(--font-size-xs);" onclick="window.editGoalContributionAmount(${
+                        goal.id
+                      }, ${originalIndex})">
+                        ✏️ Editar monto
+                      </button>
+                      <button type="button" class="btn btn--ghost btn--sm" style="padding: var(--spacing-xxs) var(--spacing-xs); font-size: var(--font-size-xs);" onclick="window.editGoalContributionNote(${
+                        goal.id
+                      }, ${originalIndex})">
+                        📝 ${aporte.nota ? "Editar nota" : "Agregar nota"}
+                      </button>
+                    </div>
                   </div>
                   <span style="font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--color-success); white-space: nowrap;">
                     +${formatCurrency(aporte.monto)}
@@ -510,8 +520,12 @@ function attachEventListeners() {
     const modal = document.getElementById("goal-modal");
     const form = document.getElementById("goal-form");
     const title = document.getElementById("modal-title");
+    const numericId =
+      goalId !== null && goalId !== undefined ? Number(goalId) : null;
     const goal =
-      goalId !== null ? currentGoals.find((g) => g.id === goalId) : null;
+      numericId !== null
+        ? currentGoals.find((g) => g.id === numericId)
+        : null;
 
     form.reset();
 
@@ -584,7 +598,9 @@ function attachEventListeners() {
     try {
       if (goalId) {
         // Editar
-        const goal = currentGoals.find((g) => g.id === parseInt(goalId));
+        const goal = currentGoals.find(
+          (g) => g.id === Number.parseInt(goalId, 10)
+        );
         if (!goal) {
           throw new Error("No se encontró la meta que quieres editar.");
         }
@@ -651,7 +667,12 @@ function attachEventListeners() {
   };
 
   window.deleteGoal = async (goalId) => {
-    const goal = currentGoals.find((g) => g.id === goalId);
+    const numericId = Number(goalId);
+    const goal = currentGoals.find((g) => g.id === numericId);
+    if (!goal) {
+      notifyError("No se encontró la meta seleccionada.");
+      return;
+    }
     const confirmed = await confirmDialog({
       title: "Eliminar meta",
       message: `¿Eliminar la meta "${goal.nombre}"? Esta acción es irreversible.`,
@@ -662,7 +683,7 @@ function attachEventListeners() {
     if (!confirmed) return;
 
     try {
-      await goalRepository.delete(goalId);
+      await goalRepository.delete(numericId);
       await renderGoals();
     } catch (error) {
       notifyError("Error al eliminar la meta: " + error.message);
@@ -839,6 +860,42 @@ function attachEventListeners() {
       await renderGoals();
     } catch (error) {
       notifyError("No se pudo actualizar la nota: " + error.message);
+    }
+  };
+
+  window.editGoalContributionAmount = async (goalId, aporteIndex) => {
+    const goal = currentGoals.find((g) => g.id === goalId);
+    if (!goal || aporteIndex < 0 || aporteIndex >= goal.aportes.length) {
+      notifyError("No se encontró el aporte seleccionado.");
+      return;
+    }
+
+    const aporte = goal.aportes[aporteIndex];
+    const nuevoMontoStr = window.prompt(
+      "Ingresa el nuevo monto para este aporte:",
+      aporte?.monto != null ? aporte.monto : ""
+    );
+    if (nuevoMontoStr === null) {
+      return;
+    }
+
+    const nuevoMonto = parseFloat(nuevoMontoStr);
+    if (!Number.isFinite(nuevoMonto) || nuevoMonto <= 0) {
+      notifyError("El monto debe ser un número mayor a 0.");
+      return;
+    }
+
+    try {
+      const resultado = goal.actualizarMontoAporte(aporteIndex, nuevoMonto);
+      if (!resultado.success) {
+        notifyError(resultado.error || "No se pudo actualizar el aporte.");
+        return;
+      }
+      await goalRepository.update(goal);
+      notifySuccess("Aporte actualizado correctamente");
+      await renderGoals();
+    } catch (error) {
+      notifyError("Error al actualizar el aporte: " + error.message);
     }
   };
 

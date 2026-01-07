@@ -1130,7 +1130,12 @@ function attachEventListeners() {
   };
 
   window.deleteDebt = async (debtId) => {
-    const debt = currentDebts.find((d) => d.id === debtId);
+    const numericId = Number(debtId);
+    const debt = currentDebts.find((d) => d.id === numericId);
+    if (!debt) {
+      notifyError("No se encontró la deuda seleccionada.");
+      return;
+    }
     const confirmed = await confirmDialog({
       title: "Eliminar deuda",
       message: `¿Deseas eliminar la deuda "${debt.nombre}"? Esta acción no se puede deshacer.`,
@@ -1141,7 +1146,7 @@ function attachEventListeners() {
     if (!confirmed) return;
 
     try {
-      await debtRepository.delete(debtId);
+      await debtRepository.delete(numericId);
       await renderDebts();
     } catch (error) {
       notifyError("Error al eliminar la deuda: " + error.message);
@@ -1409,7 +1414,8 @@ function attachEventListeners() {
   };
 
   window.deleteDebtor = async (debtorId) => {
-    const linkedDebts = currentDebts.filter((d) => d.personaId === debtorId);
+    const numericId = Number(debtorId);
+    const linkedDebts = currentDebts.filter((d) => d.personaId === numericId);
     if (linkedDebts.length > 0) {
       notifyInfo(
         "No puedes eliminar este contacto porque tiene deudas asociadas. Edita o elimina esas deudas primero."
@@ -1417,7 +1423,7 @@ function attachEventListeners() {
       return;
     }
 
-    const debtor = currentDebtors.find((d) => d.id === debtorId);
+    const debtor = currentDebtors.find((d) => d.id === numericId);
     const confirmed = await confirmDialog({
       title: "Eliminar contacto",
       message: `¿Eliminar a "${debtor?.nombre || "este contacto"}" de la lista?`,
@@ -1428,7 +1434,7 @@ function attachEventListeners() {
     if (!confirmed) return;
 
     try {
-      await debtorRepository.delete(debtorId);
+      await debtorRepository.delete(numericId);
       await reloadDebtors();
       refreshDebtorUI();
     } catch (error) {

@@ -77,6 +77,34 @@ export class Goal {
   }
 
   /**
+   * Actualizar el monto de un aporte existente
+   * @param {number} aporteIndex
+   * @param {number} nuevoMonto
+   * @returns {{success:boolean, error?:string, aporte?:Object}}
+   */
+  actualizarMontoAporte(aporteIndex, nuevoMonto) {
+    if (
+      Number.isNaN(aporteIndex) ||
+      aporteIndex < 0 ||
+      aporteIndex >= this.aportes.length
+    ) {
+      return { success: false, error: "Aporte no encontrado" };
+    }
+
+    const montoNumerico = Number(nuevoMonto);
+    if (!Number.isFinite(montoNumerico) || montoNumerico <= 0) {
+      return {
+        success: false,
+        error: "El monto debe ser un número mayor a 0",
+      };
+    }
+
+    this.aportes[aporteIndex].monto = parseFloat(montoNumerico.toFixed(2));
+    this.syncStatus = "pending";
+    return { success: true, aporte: this.aportes[aporteIndex] };
+  }
+
+  /**
    * Calcular el progreso actual de la meta
    * @returns {number} - Porcentaje de progreso (0-100+)
    */

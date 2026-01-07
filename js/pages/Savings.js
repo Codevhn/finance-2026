@@ -662,7 +662,12 @@ function attachEventListeners() {
   };
 
   window.deleteSaving = async (savingId) => {
-    const saving = currentSavings.find((s) => s.id === savingId);
+    const numericId = Number(savingId);
+    const saving = currentSavings.find((s) => s.id === numericId);
+    if (!saving) {
+      notifyError("No se encontró el fondo seleccionado.");
+      return;
+    }
     const confirmed = await confirmDialog({
       title: "Eliminar fondo",
       message: `¿Eliminar el fondo "${saving.nombre}"? Esta acción no se puede deshacer.`,
@@ -673,7 +678,7 @@ function attachEventListeners() {
     if (!confirmed) return;
 
     try {
-      await savingRepository.delete(savingId);
+      await savingRepository.delete(numericId);
       await renderSavings();
     } catch (error) {
       notifyError("Error al eliminar el fondo: " + error.message);
