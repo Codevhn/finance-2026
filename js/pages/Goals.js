@@ -80,6 +80,14 @@ export async function renderGoals() {
                   Define hasta cuándo quieres tener lista esta meta y te mostraremos recordatorios.
                 </small>
               </div>
+
+              <div class="form-group">
+                <label class="form-label" for="goal-suggested">Aporte diario sugerido (Lps) - opcional</label>
+                <input type="number" id="goal-suggested" class="form-input" placeholder="0.00" step="0.01" min="0">
+                <small style="display:block; font-size: var(--font-size-xs); color: var(--color-text-tertiary);">
+                  Úsalo como recordatorio de cuánto debes apartar cada día para llegar a tiempo.
+                </small>
+              </div>
             </form>
           </div>
           <div class="modal__footer">
@@ -433,6 +441,19 @@ function renderGoalCard(goal) {
         }
 
         ${
+          goal.aporteSugeridoDiario !== null
+            ? `
+          <div style="margin-top: var(--spacing-md); padding: var(--spacing-sm); border-radius: var(--border-radius-md); background: rgba(250, 204, 21, 0.12); border-left: 3px solid var(--color-warning);">
+            <div style="font-size: var(--font-size-xs); color: var(--color-warning);">Aporte sugerido</div>
+            <div style="font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); color: var(--color-text-primary);">
+              ${formatCurrency(goal.aporteSugeridoDiario)} diarios para alcanzar la meta.
+            </div>
+          </div>
+        `
+            : ""
+        }
+
+        ${
           goal.aportes.length > 0
             ? `
           <details style="margin-top: var(--spacing-md);">
@@ -512,9 +533,14 @@ function attachEventListeners() {
       document.getElementById("goal-due-date").value = formatDateForInput(
         goal.fechaLimite
       );
+      document.getElementById("goal-suggested").value =
+        goal.aporteSugeridoDiario !== null && !Number.isNaN(goal.aporteSugeridoDiario)
+          ? Number(goal.aporteSugeridoDiario).toFixed(2)
+          : "";
     } else {
       title.textContent = "Nueva Meta";
       document.getElementById("goal-id").value = "";
+      document.getElementById("goal-suggested").value = "";
     }
 
     modal.style.display = "flex";
@@ -537,6 +563,12 @@ function attachEventListeners() {
       document.getElementById("goal-amount").value
     );
     const fechaLimiteInput = document.getElementById("goal-due-date").value;
+    const aporteSugeridoValue =
+      document.getElementById("goal-suggested").value;
+    const aporteSugeridoDiario =
+      aporteSugeridoValue !== ""
+        ? parseFloat(aporteSugeridoValue)
+        : null;
     const debtValue = document.getElementById("goal-debt").value;
     const parsedDebtId =
       debtValue && debtValue !== "" ? parseInt(debtValue, 10) : null;
@@ -562,6 +594,10 @@ function attachEventListeners() {
           fechaLimiteInput,
           goal.fechaLimite
         );
+        goal.aporteSugeridoDiario =
+          aporteSugeridoDiario !== null && !Number.isNaN(aporteSugeridoDiario)
+            ? aporteSugeridoDiario
+            : null;
         const previousDebtId = goal.debtId;
         const nextDebtId = selectedDebt
           ? selectedDebt.id
@@ -591,6 +627,11 @@ function attachEventListeners() {
         const goal = new Goal({
           nombre,
           montoObjetivo,
+          aporteSugeridoDiario:
+            aporteSugeridoDiario !== null &&
+            !Number.isNaN(aporteSugeridoDiario)
+              ? aporteSugeridoDiario
+              : null,
           debtId: selectedDebt ? selectedDebt.id : null,
           debtNombre: selectedDebt ? selectedDebt.nombre : "",
           fechaLimite: parseOptionalDateInput(fechaLimiteInput),

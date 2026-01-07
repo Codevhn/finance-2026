@@ -17,6 +17,9 @@ export class Goal {
     this.completada = data.completada || false;
     this.cicloActual = data.cicloActual || 1;
     this.fechaCompletado = data.fechaCompletado || null;
+    this.aporteSugeridoDiario = Number.isFinite(Number(data.aporteSugeridoDiario))
+      ? Number(data.aporteSugeridoDiario)
+      : null;
 
     // Campos para sincronización futura
     this.syncStatus = data.syncStatus || "local"; // 'local', 'synced', 'pending'
@@ -132,6 +135,7 @@ export class Goal {
     const nuevaMeta = new Goal({
       nombre: this.nombre,
       montoObjetivo: this.montoObjetivo,
+      aporteSugeridoDiario: this.aporteSugeridoDiario,
       cicloActual: this.cicloActual + 1,
       debtId: this.debtId,
       debtNombre: this.debtNombre,
@@ -217,6 +221,7 @@ export class Goal {
       completada: this.completada,
       cicloActual: this.cicloActual,
       fechaCompletado: this.fechaCompletado,
+      aporteSugeridoDiario: this.aporteSugeridoDiario,
       syncStatus: this.syncStatus,
       lastSyncedAt: this.lastSyncedAt,
       remoteId: this.remoteId,
@@ -230,3 +235,9 @@ export class Goal {
     return json;
   }
 }
+    if (
+      this.aporteSugeridoDiario !== null &&
+      Number(this.aporteSugeridoDiario) < 0
+    ) {
+      errores.push("El aporte sugerido debe ser un número positivo");
+    }

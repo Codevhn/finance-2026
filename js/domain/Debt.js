@@ -18,6 +18,11 @@ export class Debt {
     this.personaMontoMensual = Number.isFinite(Number(data.personaMontoMensual))
       ? Number(data.personaMontoMensual)
       : 0;
+    this.aporteSugeridoDiario = Number.isFinite(
+      Number(data.aporteSugeridoDiario)
+    )
+      ? Number(data.aporteSugeridoDiario)
+      : null;
     this.fechaInicio = data.fechaInicio || data.fechaCreacion || new Date().toISOString();
     this.fechaCreacion = data.fechaCreacion || new Date().toISOString();
     this.fechaLimite = data.fechaLimite || null;
@@ -242,6 +247,13 @@ export class Debt {
       errores.push("El nombre del contacto debe tener al menos 3 caracteres");
     }
 
+    if (
+      this.aporteSugeridoDiario !== null &&
+      Number(this.aporteSugeridoDiario) < 0
+    ) {
+      errores.push("El aporte sugerido debe ser positivo");
+    }
+
     if (this.fechaLimite) {
       const dueDate = new Date(this.fechaLimite);
       if (Number.isNaN(dueDate.getTime())) {
@@ -281,6 +293,7 @@ export class Debt {
       fechaLimite: this.fechaLimite,
       archivada: this.archivada,
       fechaArchivado: this.fechaArchivado,
+      aporteSugeridoDiario: this.aporteSugeridoDiario,
       syncStatus: this.syncStatus,
       lastSyncedAt: this.lastSyncedAt,
       remoteId: this.remoteId,

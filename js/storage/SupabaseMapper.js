@@ -36,6 +36,11 @@ const normalizeNumber = (value, fallback = 0) => {
   return Number.isFinite(num) ? num : fallback;
 };
 
+const normalizeNullableNumber = (value) => {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+};
+
 const getLocalId = (record) => {
   if (typeof record.id === "number") return record.id;
   if (typeof record.local_id === "number") return record.local_id;
@@ -70,6 +75,9 @@ export function formatRecordForSupabase(record, tableName, userId) {
         fecha_creacion: isValidDate(record.fechaCreacion) || new Date().toISOString(),
         fecha_completada: isValidDate(record.fechaCompletado),
         fecha_limite: isValidDate(record.fechaLimite),
+        aporte_sugerido_diario: normalizeNullableNumber(
+          record.aporteSugeridoDiario
+        ),
         notas: record.notas || null,
         debt_id: record.debtId ?? null,
         debt_nombre: record.debtNombre || null,
@@ -104,6 +112,9 @@ export function formatRecordForSupabase(record, tableName, userId) {
         fecha_vencimiento: isValidDate(record.fechaLimite),
         fecha_archivado: isValidDate(record.fechaArchivado),
         archivada: Boolean(record.archivada),
+        aporte_sugerido_diario: normalizeNullableNumber(
+          record.aporteSugeridoDiario
+        ),
         pagos,
       };
     }
@@ -207,6 +218,9 @@ export function mapRecordFromSupabase(record, tableName) {
         fechaCreacion: record.fecha_creacion,
         fechaCompletado: record.fecha_completada,
         fechaLimite: record.fecha_limite,
+        aporteSugeridoDiario: normalizeNullableNumber(
+          record.aporte_sugerido_diario
+        ),
         notas: record.notas || "",
         aportes: normalizeArray(record.aportes, []),
         debtId: record.debt_id ?? null,
@@ -237,6 +251,9 @@ export function mapRecordFromSupabase(record, tableName) {
         archivada: record.archivada ?? false,
         fechaArchivado: record.fecha_archivado,
         notas: record.notas || "",
+        aporteSugeridoDiario: normalizeNullableNumber(
+          record.aporte_sugerido_diario
+        ),
         pagos: normalizeArray(record.pagos, []),
       };
 

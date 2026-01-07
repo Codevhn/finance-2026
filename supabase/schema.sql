@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS goals (
   completada BOOLEAN DEFAULT FALSE,
   fecha_creacion TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   fecha_completada TIMESTAMP WITH TIME ZONE,
+  aporte_sugerido_diario NUMERIC(10, 2),
   notas TEXT,
   sync_status TEXT DEFAULT 'synced',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -42,6 +43,7 @@ ALTER TABLE goals ADD COLUMN IF NOT EXISTS fecha_limite TIMESTAMP WITH TIME ZONE
 ALTER TABLE goals ADD COLUMN IF NOT EXISTS ciclo_actual INTEGER DEFAULT 1;
 ALTER TABLE goals ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMP WITH TIME ZONE;
 ALTER TABLE goals ADD COLUMN IF NOT EXISTS remote_id TEXT;
+ALTER TABLE goals ADD COLUMN IF NOT EXISTS aporte_sugerido_diario NUMERIC(10, 2);
 
 -- ============================================
 -- TABLA: debts (Deudas)
@@ -55,6 +57,7 @@ CREATE TABLE IF NOT EXISTS debts (
   monto_pagado NUMERIC(10, 2) DEFAULT 0,
   tasa_interes NUMERIC(5, 2) DEFAULT 0,
   fecha_vencimiento DATE,
+  aporte_sugerido_diario NUMERIC(10, 2),
   persona_id INTEGER,
   persona_nombre TEXT,
   persona_contacto TEXT,
@@ -86,6 +89,7 @@ ALTER TABLE debts ADD COLUMN IF NOT EXISTS persona_contacto TEXT;
 ALTER TABLE debts ADD COLUMN IF NOT EXISTS persona_tipo TEXT DEFAULT 'persona';
 ALTER TABLE debts ADD COLUMN IF NOT EXISTS persona_servicio TEXT;
 ALTER TABLE debts ADD COLUMN IF NOT EXISTS persona_monto_mensual NUMERIC(10, 2) DEFAULT 0;
+ALTER TABLE debts ADD COLUMN IF NOT EXISTS aporte_sugerido_diario NUMERIC(10, 2);
 ALTER TABLE debts ADD COLUMN IF NOT EXISTS fecha_inicio TIMESTAMP WITH TIME ZONE;
 ALTER TABLE debts ADD COLUMN IF NOT EXISTS fecha_archivado TIMESTAMP WITH TIME ZONE;
 ALTER TABLE debts ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMP WITH TIME ZONE;

@@ -111,7 +111,7 @@ export async function renderDebts() {
                   <label class="form-label" id="debt-person-label" for="debt-person">Contraparte de la cuenta por cobrar</label>
                   <button type="button" class="btn btn--ghost btn--sm" onclick="window.openDebtorModal()">
                     <span>➕</span>
-                    <span>Nueva Persona</span>
+                    <span>Nuevo contacto</span>
                   </button>
                 </div>
                 <select id="debt-person" class="form-input">
@@ -139,6 +139,12 @@ export async function renderDebts() {
               <div class="form-group">
                 <label class="form-label form-label--required" for="debt-amount">Monto Total Adeudado (Lps)</label>
                 <input type="number" id="debt-amount" class="form-input" placeholder="0.00" step="0.01" min="0.01" required>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="debt-suggested">Aporte diario sugerido (Lps) - opcional</label>
+                <input type="number" id="debt-suggested" class="form-input" placeholder="0.00" step="0.01" min="0">
+                <small class="form-hint">Úsalo como recordatorio de cuánto deberías guardar para cubrir esta cuenta a tiempo.</small>
               </div>
             </form>
           </div>
@@ -846,6 +852,27 @@ function renderDebtCard(debt) {
         </div>
 
         ${
+          debt.aporteSugeridoDiario !== null
+            ? `
+          <div style="margin-bottom: var(--spacing-md); padding: var(--spacing-sm); border-radius: var(--border-radius-md); background: rgba(251, 191, 36, 0.15); border-left: 3px solid var(--color-warning);">
+            <div style="font-size: var(--font-size-xs); color: var(--color-warning);">Aporte sugerido</div>
+            <div style="font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); color: var(--color-text-primary);">
+              ${
+                debt.tipo === DEBT_TYPES.I_OWE
+                  ? `Reserva ${formatCurrency(
+                      debt.aporteSugeridoDiario
+                    )} diarios para cubrir esta cuenta.`
+                  : `Recuerda cobrar ${formatCurrency(
+                      debt.aporteSugeridoDiario
+                    )} diarios para llegar a la meta pactada.`
+              }
+            </div>
+          </div>
+        `
+            : ""
+        }
+
+        ${
           !isArchived
             ? `
           <div style="padding: var(--spacing-sm); background: rgba(239, 68, 68, 0.1); border-radius: var(--border-radius-md); border-left: 3px solid var(--color-danger);">
@@ -979,6 +1006,11 @@ function attachEventListeners() {
         document.getElementById("debt-id").value = debt.id;
         document.getElementById("debt-name").value = debt.nombre;
         document.getElementById("debt-amount").value = debt.totalAdeudado;
+        document.getElementById("debt-suggested").value =
+          debt.aporteSugeridoDiario !== null &&
+          !Number.isNaN(debt.aporteSugeridoDiario)
+            ? Number(debt.aporteSugeridoDiario).toFixed(2)
+            : "";
         if (debt.personaId) {
           document.getElementById("debt-person").value = String(debt.personaId);
         }
@@ -994,6 +1026,7 @@ function attachEventListeners() {
       }
     } else {
       title.textContent = "Nueva Deuda";
+      document.getElementById("debt-suggested").value = "";
     }
 
     typeInputs.forEach((input) => {
@@ -1031,6 +1064,12 @@ function attachEventListeners() {
     const totalAdeudado = parseFloat(
       document.getElementById("debt-amount").value
     );
+    const aporteSugeridoValue =
+      document.getElementById("debt-suggested").value;
+    const aporteSugeridoDiario =
+      aporteSugeridoValue !== ""
+        ? parseFloat(aporteSugeridoValue)
+        : null;
     const tipo =
       document.querySelector('input[name="debt-type"]:checked')?.value ||
       DEBT_TYPES.ME_OWED;
@@ -1049,6 +1088,10 @@ function attachEventListeners() {
           fechaLimiteInput,
           debt.fechaLimite
         );
+        debt.aporteSugeridoDiario =
+          aporteSugeridoDiario !== null && !Number.isNaN(aporteSugeridoDiario)
+            ? aporteSugeridoDiario
+            : null;
         if (personaSeleccionada) {
           debt.asignarPersona(personaSeleccionada);
         } else {
@@ -1063,6 +1106,11 @@ function attachEventListeners() {
           tipo,
           fechaInicio: parseDateInput(fechaInicioInput),
           fechaLimite: parseOptionalDateInput(fechaLimiteInput),
+          aporteSugeridoDiario:
+            aporteSugeridoDiario !== null &&
+            !Number.isNaN(aporteSugeridoDiario)
+              ? aporteSugeridoDiario
+              : null,
         });
         if (personaSeleccionada) {
           debt.asignarPersona(personaSeleccionada);
