@@ -17,7 +17,9 @@ import { formatCurrency } from "../utils/formatters.js";
 let currentGoals = [];
 let cachedDebts = [];
 const GOAL_DUE_SOON_THRESHOLD_DAYS = 5;
+let cachedSavings = [];
 let cachedAnnualSavings = [];
+let overflowAllocationState = null;
 
 export async function renderGoals() {
   const mainContent = document.getElementById("main-content");
@@ -147,6 +149,62 @@ export async function renderGoals() {
           </div>
         </div>
       </div>
+
+      <!-- Modal para gestionar sobrante -->
+      <div id="overflow-modal" class="modal-overlay" style="display: none;">
+        <div class="modal">
+          <div class="modal__header">
+            <h3 class="modal__title">Sobrante disponible</h3>
+            <button class="modal__close" onclick="window.closeOverflowModal()">✕</button>
+          </div>
+          <div class="modal__body">
+            <div style="margin-bottom: var(--spacing-md);">
+              <p style="margin: 0; color: var(--color-text-secondary);">Tienes un sobrante al completar la meta:</p>
+              <div style="font-size: var(--font-size-xl); font-weight: var(--font-weight-semibold);" id="overflow-amount-display">L 0.00</div>
+              <div style="font-size: var(--font-size-sm); color: var(--color-text-tertiary);" id="overflow-goal-name">Meta</div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">¿Qué deseas hacer con este sobrante?</label>
+              <div style="display:flex; flex-direction:column; gap: var(--spacing-xs);">
+                <label style="display:flex; align-items:center; gap: var(--spacing-xs);">
+                  <input type="radio" name="overflow-action" value="skip" checked>
+                  <span>Guardar para otra ocasión (no moverlo)</span>
+                </label>
+                <label style="display:flex; align-items:center; gap: var(--spacing-xs);">
+                  <input type="radio" name="overflow-action" value="debt">
+                  <span>Aplicarlo a una deuda pendiente</span>
+                </label>
+                <label style="display:flex; align-items:center; gap: var(--spacing-xs);">
+                  <input type="radio" name="overflow-action" value="saving">
+                  <span>Depositarlo en un ahorro</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="form-group" id="overflow-debt-group" style="display: none;">
+              <label class="form-label" for="overflow-debt">Selecciona la deuda</label>
+              <select id="overflow-debt" class="form-input"></select>
+              <small class="form-hint">Se registrará como un pago a la deuda seleccionada.</small>
+            </div>
+
+            <div class="form-group" id="overflow-saving-group" style="display: none;">
+              <label class="form-label" for="overflow-saving">Selecciona el ahorro</label>
+              <select id="overflow-saving" class="form-input"></select>
+              <small class="form-hint">El sobrante se depositará en ese ahorro.</small>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="overflow-note">Nota (opcional)</label>
+              <input type="text" id="overflow-note" class="form-input" placeholder="Ej: Sobrante de la meta de enero">
+            </div>
+          </div>
+          <div class="modal__footer">
+            <button type="button" class="btn btn--secondary" onclick="window.closeOverflowModal()">Cerrar</button>
+            <button type="button" class="btn btn--primary" onclick="window.confirmOverflowAllocation()">Aplicar sobrante</button>
+          </div>
+        </div>
+      </div>
     `;
 
     attachEventListeners();
@@ -172,6 +230,7 @@ async function loadGoals() {
   ]);
   currentGoals = goals;
   cachedDebts = debts;
+  cachedSavings = savings;
   cachedAnnualSavings = savings
     .filter((saving) => saving.metaAnual)
     .sort((a, b) => (a.nombre || "").localeCompare(b.nombre || ""));
@@ -255,6 +314,9 @@ function renderGoalCard(goal) {
   const debtApplicationDate = goal.debtApplication?.fecha
     ? new Date(goal.debtApplication.fecha).toLocaleDateString("es-HN")
     : null;
+  const restartDateDisplay = goal.reinicioProgramadoPara
+    ? new Date(goal.reinicioProgramadoPara).toLocaleDateString("es-HN")
+    : null;
 
   return `
     <div class="card">
@@ -312,6 +374,13 @@ function renderGoalCard(goal) {
           isCompleted
             ? `
           <div class="badge badge--success" style="margin-bottom: var(--spacing-md);">✅ Completada</div>
+          ${
+            restartDateDisplay
+              ? `<div style="margin-bottom: var(--spacing-md); font-size: var(--font-size-sm); color: var(--color-text-secondary);">
+                  ⏳ Nuevo ciclo programado para ${restartDateDisplay}
+                </div>`
+              : ""
+          }
         `
             : ""
         }
@@ -802,24 +871,54 @@ function attachEventListeners() {
     }
 
     const goalId = parseInt(
-      document.getElementById("contribution-goal-id").value
+      document.getElementById("contribution-goal-id").value,
+      10
     );
     const monto = parseFloat(
       document.getElementById("contribution-amount").value
     );
     const nota = document.getElementById("contribution-note").value;
 
+    const goal = currentGoals.find((g) => g.id === goalId);
+    if (!goal) {
+      notifyError("No se encontró la meta seleccionada.");
+      return;
+    }
+
+    if (!Number.isFinite(monto) || monto <= 0) {
+      notifyError("Ingresa un monto válido para el aporte.");
+      return;
+    }
+
+    let restante = goal.getMontoRestante();
+    if (goal.completada || restante <= 0) {
+      notifyError(
+        "Esta meta ya está completada. Espera al siguiente ciclo para seguir aportando."
+      );
+      return;
+    }
+
+    let montoAplicable = monto;
+    let excedente = 0;
+    if (monto > restante) {
+      excedente = monto - restante;
+      montoAplicable = restante;
+    }
+
     try {
       const resultado = await goalRepository.agregarAporte(
         goalId,
-        monto,
+        montoAplicable,
         nota
       );
 
       if (resultado.progreso >= 100) {
-        notifySuccess(
-          "🎉 ¡Felicidades! Has completado tu meta. Se creó una nueva meta para el siguiente ciclo."
-        );
+        const completionMessage = resultado.reinicioProgramadoPara
+          ? `🎉 ¡Felicidades! Has completado tu meta. El siguiente ciclo iniciará automáticamente el ${new Date(
+              resultado.reinicioProgramadoPara
+            ).toLocaleDateString("es-HN")}.`
+          : "🎉 ¡Felicidades! Has completado tu meta. Se creó una nueva meta para el siguiente ciclo.";
+        notifySuccess(completionMessage);
       }
 
       if (resultado.transferenciaAhorro) {
@@ -830,8 +929,25 @@ function attachEventListeners() {
         );
       }
 
+      let overflowPayload = null;
+      if (excedente > 0) {
+        notifySuccess(
+          `Tu meta se completó y sobraron ${formatCurrency(
+            excedente
+          )}. Decide cómo usar ese monto.`
+        );
+        overflowPayload = {
+          goalId,
+          goalName: goal.nombre,
+          amount: excedente,
+        };
+      }
+
       window.closeContributionModal();
       await renderGoals();
+      if (overflowPayload) {
+        openOverflowModal(overflowPayload);
+      }
     } catch (error) {
       notifyError("Error al agregar aporte: " + error.message);
     }
@@ -985,7 +1101,197 @@ function attachEventListeners() {
         window.closeContributionModal();
       }
     });
+
+  document.getElementById("overflow-modal")?.addEventListener("click", (e) => {
+    if (e.target.id === "overflow-modal") {
+      window.closeOverflowModal();
+    }
+  });
+
+  document
+    .querySelectorAll('input[name="overflow-action"]')
+    .forEach((input) => {
+      input.addEventListener("change", handleOverflowActionChange);
+    });
+
+  handleOverflowActionChange();
 }
+}
+
+function openOverflowModal({ goalId, goalName, amount }) {
+  const modal = document.getElementById("overflow-modal");
+  if (!modal) return;
+  overflowAllocationState = {
+    goalId,
+    goalName,
+    amount,
+  };
+  const amountDisplay = document.getElementById("overflow-amount-display");
+  const goalNameDisplay = document.getElementById("overflow-goal-name");
+  if (amountDisplay) {
+    amountDisplay.textContent = formatCurrency(amount);
+  }
+  if (goalNameDisplay) {
+    goalNameDisplay.textContent = goalName || "Meta mensual";
+  }
+  const noteInput = document.getElementById("overflow-note");
+  if (noteInput) {
+    noteInput.value = "";
+  }
+
+  const defaultOption = document.querySelector(
+    'input[name="overflow-action"][value="skip"]'
+  );
+  if (defaultOption) {
+    defaultOption.checked = true;
+  }
+
+  const debtSelect = document.getElementById("overflow-debt");
+  if (debtSelect) {
+    debtSelect.innerHTML = renderOverflowDebtOptions();
+  }
+  const savingSelect = document.getElementById("overflow-saving");
+  if (savingSelect) {
+    savingSelect.innerHTML = renderOverflowSavingOptions();
+  }
+
+  handleOverflowActionChange();
+  modal.style.display = "flex";
+}
+
+window.closeOverflowModal = () => {
+  const modal = document.getElementById("overflow-modal");
+  if (modal) {
+    modal.style.display = "none";
+  }
+  overflowAllocationState = null;
+  const noteInput = document.getElementById("overflow-note");
+  if (noteInput) {
+    noteInput.value = "";
+  }
+};
+
+function getSelectedOverflowAction() {
+  return document.querySelector('input[name="overflow-action"]:checked')
+    ?.value;
+}
+
+function handleOverflowActionChange() {
+  const action = getSelectedOverflowAction();
+  const debtGroup = document.getElementById("overflow-debt-group");
+  const savingGroup = document.getElementById("overflow-saving-group");
+  if (debtGroup) {
+    debtGroup.style.display = action === "debt" ? "block" : "none";
+  }
+  if (savingGroup) {
+    savingGroup.style.display = action === "saving" ? "block" : "none";
+  }
+}
+
+function renderOverflowDebtOptions() {
+  const activeDebts = cachedDebts.filter((debt) => !debt.archivada);
+  if (!activeDebts.length) {
+    return `<option value="" disabled>No tienes deudas activas</option>`;
+  }
+
+  const options = [
+    `<option value="">Selecciona una deuda</option>`,
+    ...activeDebts.map((debt) => {
+      const saldo =
+        typeof debt.calcularSaldo === "function"
+          ? debt.calcularSaldo()
+          : 0;
+      return `<option value="${debt.id}">${debt.nombre} · Saldo ${formatCurrency(
+        saldo
+      )}</option>`;
+    }),
+  ];
+
+  return options.join("");
+}
+
+function renderOverflowSavingOptions() {
+  if (!cachedSavings.length) {
+    return `<option value="" disabled>No tienes ahorros disponibles</option>`;
+  }
+
+  const options = [
+    `<option value="">Selecciona un ahorro</option>`,
+    ...cachedSavings.map(
+      (saving) =>
+        `<option value="${saving.id}">${saving.nombre || "Ahorro sin nombre"}</option>`
+    ),
+  ];
+
+  return options.join("");
+}
+
+window.confirmOverflowAllocation = async () => {
+  if (!overflowAllocationState) {
+    window.closeOverflowModal();
+    return;
+  }
+
+  const action = getSelectedOverflowAction();
+  const note = document.getElementById("overflow-note")?.value || "";
+  const { amount, goalName } = overflowAllocationState;
+
+  if (!action || action === "skip") {
+    notifySuccess(
+      "El sobrante quedó disponible para usarlo cuando decidas."
+    );
+    window.closeOverflowModal();
+    return;
+  }
+
+  try {
+    if (action === "debt") {
+      const select = document.getElementById("overflow-debt");
+      const debtId = select ? parseInt(select.value, 10) : null;
+      if (!debtId) {
+        notifyError("Selecciona la deuda a la que quieres aplicar el sobrante.");
+        return;
+      }
+      const debtName = getDebtNameById(debtId) || "Deuda";
+      const resultado = await debtRepository.agregarPago(
+        debtId,
+        amount,
+        note.trim() || `Sobrante de la meta "${goalName}"`
+      );
+      notifySuccess(
+        `Se aplicaron ${formatCurrency(
+          amount
+        )} a "${debtName}". Saldo restante: ${formatCurrency(
+          resultado.saldoRestante
+        )}.`
+      );
+    } else if (action === "saving") {
+      const select = document.getElementById("overflow-saving");
+      const savingId = select ? parseInt(select.value, 10) : null;
+      if (!savingId) {
+        notifyError("Selecciona el ahorro donde quieres depositar el sobrante.");
+        return;
+      }
+      const saving =
+        cachedSavings.find((item) => item.id === savingId) || null;
+      await savingRepository.depositar(
+        savingId,
+        amount,
+        note.trim() || `Sobrante de la meta "${goalName}"`
+      );
+      notifySuccess(
+        `Depositaste ${formatCurrency(amount)} en "${
+          saving?.nombre || "Ahorro"
+        }".`
+      );
+    }
+
+    window.closeOverflowModal();
+    await renderGoals();
+  } catch (error) {
+    notifyError("No se pudo aplicar el sobrante: " + error.message);
+  }
+};
 
 function renderDebtSelectOptions(selectedId = null) {
   const normalizedSelectedId =

@@ -11,6 +11,7 @@ import savingRepository from "./SavingRepository.js";
 class GoalRepository extends BaseRepository {
   constructor() {
     super("goals");
+    this._processingRestarts = false;
   }
 
   /**
@@ -18,6 +19,7 @@ class GoalRepository extends BaseRepository {
    * @returns {Promise<Goal[]>}
    */
   async getAll() {
+    await this._processScheduledRestarts();
     const data = await super.getAll();
     return data.map((item) => new Goal(item));
   }
@@ -100,6 +102,24 @@ class GoalRepository extends BaseRepository {
       throw new Error(resultado.error);
     }
 
+    const now = Date.now();
+    let shouldDelayRestart = false;
+    if (goal.completada) {
+      const dueDate = goal.fechaLimite ? new Date(goal.fechaLimite) : null;
+      if (
+        dueDate &&
+        !Number.isNaN(dueDate.getTime()) &&
+        dueDate.getTime() > now
+      ) {
+        shouldDelayRestart = true;
+        goal.programarReinicio(dueDate);
+      } else {
+        goal.programarReinicio(null);
+      }
+    } else if (goal.reinicioProgramadoPara) {
+      goal.programarReinicio(null);
+    }
+
     await this.update(goal);
 
     let transferenciaAhorro = null;
@@ -109,12 +129,17 @@ class GoalRepository extends BaseRepository {
     }
 
     // Si se completó, crear nueva meta para el siguiente ciclo
-    if (goal.completada) {
+    if (goal.completada && !shouldDelayRestart) {
       const nuevaMeta = goal.reiniciarCiclo();
       await this.create(nuevaMeta);
     }
 
-    return { ...resultado, transferenciaAhorro };
+    return {
+      ...resultado,
+      transferenciaAhorro,
+      reinicioProgramadoPara: goal.reinicioProgramadoPara,
+      reinicioInmediato: goal.completada && !shouldDelayRestart,
+    };
   }
 
   /**
@@ -268,6 +293,46 @@ class GoalRepository extends BaseRepository {
     } catch (error) {
       console.error("No se pudo transferir al ahorro anual:", error);
       return null;
+    }
+  }
+
+  async _processScheduledRestarts() {
+    if (this._processingRestarts) {
+      return;
+    }
+    this._processingRestarts = true;
+    try {
+      const data = await super.getAll();
+      const now = Date.now();
+
+      for (const item of data) {
+        const restartDate = item.reinicioProgramadoPara
+          ? new Date(item.reinicioProgramadoPara)
+          : null;
+        if (
+          !restartDate ||
+          Number.isNaN(restartDate.getTime()) ||
+          restartDate.getTime() > now
+        ) {
+          continue;
+        }
+
+        const completedGoal = new Goal(item);
+        completedGoal.programarReinicio(null);
+        await super.update(completedGoal.id, completedGoal.toJSON());
+
+        const nuevaMeta = completedGoal.reiniciarCiclo({
+          fechaInicio: restartDate.toISOString(),
+        });
+        await this.create(nuevaMeta);
+      }
+    } catch (error) {
+      console.error(
+        "No se pudieron procesar reinicios programados de metas:",
+        error
+      );
+    } finally {
+      this._processingRestarts = false;
     }
   }
 }

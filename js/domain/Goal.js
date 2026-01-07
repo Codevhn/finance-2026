@@ -23,6 +23,7 @@ export class Goal {
     this.ahorroAnualId =
       data.ahorroAnualId !== undefined ? data.ahorroAnualId : null;
     this.ahorroAnualNombre = data.ahorroAnualNombre || "";
+    this.reinicioProgramadoPara = data.reinicioProgramadoPara || null;
 
     // Campos para sincronización futura
     this.syncStatus = data.syncStatus || "local"; // 'local', 'synced', 'pending'
@@ -162,7 +163,12 @@ export class Goal {
    * Reiniciar el ciclo de la meta (automático al completar)
    * @returns {Goal} - Nueva instancia de meta para el siguiente ciclo
    */
-  reiniciarCiclo() {
+  reiniciarCiclo({ fechaInicio = new Date().toISOString() } = {}) {
+    const parsedStart = new Date(fechaInicio);
+    const fechaCreacion =
+      Number.isNaN(parsedStart.getTime())
+        ? new Date().toISOString()
+        : parsedStart.toISOString();
     const nuevaMeta = new Goal({
       nombre: this.nombre,
       montoObjetivo: this.montoObjetivo,
@@ -172,11 +178,30 @@ export class Goal {
       cicloActual: this.cicloActual + 1,
       debtId: this.debtId,
       debtNombre: this.debtNombre,
-      fechaCreacion: new Date().toISOString(),
+      fechaCreacion,
       fechaLimite: null,
+      reinicioProgramadoPara: null,
     });
 
     return nuevaMeta;
+  }
+
+  /**
+   * Programar el reinicio del ciclo para una fecha futura
+   * @param {string|Date|null} fecha
+   */
+  programarReinicio(fecha) {
+    if (!fecha) {
+      this.reinicioProgramadoPara = null;
+      return;
+    }
+    const parsed = new Date(fecha);
+    if (Number.isNaN(parsed.getTime())) {
+      this.reinicioProgramadoPara = null;
+      return;
+    }
+    this.reinicioProgramadoPara = parsed.toISOString();
+    this.syncStatus = "pending";
   }
 
   /**
@@ -269,6 +294,7 @@ export class Goal {
       aporteSugeridoDiario: this.aporteSugeridoDiario,
       ahorroAnualId: this.ahorroAnualId,
       ahorroAnualNombre: this.ahorroAnualNombre,
+      reinicioProgramadoPara: this.reinicioProgramadoPara,
       syncStatus: this.syncStatus,
       lastSyncedAt: this.lastSyncedAt,
       remoteId: this.remoteId,
