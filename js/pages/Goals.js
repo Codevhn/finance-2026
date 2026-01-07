@@ -103,8 +103,8 @@ export async function renderGoals() {
             </form>
           </div>
           <div class="modal__footer">
-            <button class="btn btn--secondary" onclick="window.closeGoalModal()">Cancelar</button>
-            <button class="btn btn--primary" onclick="window.saveGoal()">Guardar</button>
+            <button type="button" class="btn btn--secondary" onclick="window.closeGoalModal()">Cancelar</button>
+            <button type="button" class="btn btn--primary" onclick="window.saveGoal()">Guardar</button>
           </div>
         </div>
       </div>
@@ -142,8 +142,8 @@ export async function renderGoals() {
             </form>
           </div>
           <div class="modal__footer">
-            <button class="btn btn--secondary" onclick="window.closeContributionModal()">Cancelar</button>
-            <button class="btn btn--success" onclick="window.saveContribution()">Agregar Aporte</button>
+            <button type="button" class="btn btn--secondary" onclick="window.closeContributionModal()">Cancelar</button>
+            <button type="button" class="btn btn--success" onclick="window.saveContribution()">Agregar Aporte</button>
           </div>
         </div>
       </div>
@@ -636,7 +636,8 @@ function attachEventListeners() {
       normalizedDebtId !== null
         ? cachedDebts.find((debt) => debt.id === normalizedDebtId)
         : null;
-    const savingsValue = document.getElementById("goal-savings").value;
+    const savingsSelectEl = document.getElementById("goal-savings");
+    const savingsValue = savingsSelectEl ? savingsSelectEl.value : "";
     const parsedSavingsId =
       savingsValue && savingsValue !== "" ? parseInt(savingsValue, 10) : null;
     const selectedSaving =
