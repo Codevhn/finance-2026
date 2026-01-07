@@ -1116,7 +1116,6 @@ function attachEventListeners() {
 
   handleOverflowActionChange();
 }
-}
 
 function openOverflowModal({ goalId, goalName, amount }) {
   const modal = document.getElementById("overflow-modal");
