@@ -1,6 +1,6 @@
 /**
  * Debtor Repository
- * CRUD de personas que adeudan dinero
+ * CRUD de contactos (personas o empresas) relacionados a las deudas
  */
 
 import { BaseRepository } from "./BaseRepository.js";
@@ -12,7 +12,7 @@ class DebtorRepository extends BaseRepository {
   }
 
   /**
-   * Obtener todas las personas como instancias de Debtor
+   * Obtener todos los contactos como instancias de Debtor
    * @returns {Promise<Debtor[]>}
    */
   async getAll() {
@@ -21,7 +21,7 @@ class DebtorRepository extends BaseRepository {
   }
 
   /**
-   * Obtener persona por ID
+   * Obtener contacto por ID
    * @param {number} id
    * @returns {Promise<Debtor|null>}
    */
@@ -31,7 +31,7 @@ class DebtorRepository extends BaseRepository {
   }
 
   /**
-   * Crear nueva persona
+   * Crear nuevo contacto
    * @param {Debtor} debtor
    * @returns {Promise<number>}
    */
@@ -45,7 +45,7 @@ class DebtorRepository extends BaseRepository {
   }
 
   /**
-   * Actualizar persona existente
+   * Actualizar contacto existente
    * @param {Debtor} debtor
    * @returns {Promise<void>}
    */

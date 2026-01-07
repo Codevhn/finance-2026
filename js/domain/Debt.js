@@ -13,6 +13,11 @@ export class Debt {
     this.personaId = data.personaId || null;
     this.personaNombre = data.personaNombre || "";
     this.personaContacto = data.personaContacto || "";
+    this.personaTipo = data.personaTipo === "empresa" ? "empresa" : "persona";
+    this.personaServicio = data.personaServicio || "";
+    this.personaMontoMensual = Number.isFinite(Number(data.personaMontoMensual))
+      ? Number(data.personaMontoMensual)
+      : 0;
     this.fechaInicio = data.fechaInicio || data.fechaCreacion || new Date().toISOString();
     this.fechaCreacion = data.fechaCreacion || new Date().toISOString();
     this.fechaLimite = data.fechaLimite || null;
@@ -159,6 +164,9 @@ export class Debt {
       this.personaId = null;
       this.personaNombre = "";
       this.personaContacto = "";
+      this.personaTipo = "persona";
+      this.personaServicio = "";
+      this.personaMontoMensual = 0;
     } else {
       this.personaId = persona.id;
       this.personaNombre = persona.nombre;
@@ -166,6 +174,15 @@ export class Debt {
         .filter(Boolean)
         .join(" · ");
       this.personaContacto = contacto;
+      this.personaTipo = persona.tipo === "empresa" ? "empresa" : "persona";
+      this.personaServicio =
+        this.personaTipo === "empresa" ? persona.servicio || "" : "";
+      this.personaMontoMensual =
+        this.personaTipo === "empresa"
+          ? Number.isFinite(Number(persona.montoMensual))
+            ? Number(persona.montoMensual)
+            : 0
+          : 0;
     }
     this.syncStatus = "pending";
   }
@@ -222,7 +239,7 @@ export class Debt {
     }
 
     if (this.personaNombre && this.personaNombre.trim().length < 3) {
-      errores.push("El nombre de la persona debe tener al menos 3 caracteres");
+      errores.push("El nombre del contacto debe tener al menos 3 caracteres");
     }
 
     if (this.fechaLimite) {
@@ -256,6 +273,9 @@ export class Debt {
       personaId: this.personaId,
       personaNombre: this.personaNombre,
       personaContacto: this.personaContacto,
+      personaTipo: this.personaTipo,
+      personaServicio: this.personaServicio,
+      personaMontoMensual: this.personaMontoMensual,
       fechaInicio: this.fechaInicio,
       fechaCreacion: this.fechaCreacion,
       fechaLimite: this.fechaLimite,

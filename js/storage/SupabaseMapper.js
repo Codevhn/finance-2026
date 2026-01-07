@@ -91,6 +91,14 @@ export function formatRecordForSupabase(record, tableName, userId) {
         persona_id: record.personaId ?? null,
         persona_nombre: record.personaNombre || null,
         persona_contacto: record.personaContacto || null,
+        persona_tipo:
+          record.personaTipo === "empresa" ? "empresa" : "persona",
+        persona_servicio:
+          record.personaTipo === "empresa" ? record.personaServicio || null : null,
+        persona_monto_mensual:
+          record.personaTipo === "empresa"
+            ? normalizeNumber(record.personaMontoMensual, 0)
+            : 0,
         fecha_creacion: isValidDate(record.fechaCreacion) || new Date().toISOString(),
         fecha_inicio: isValidDate(record.fechaInicio || record.fechaCreacion),
         fecha_vencimiento: isValidDate(record.fechaLimite),
@@ -106,6 +114,13 @@ export function formatRecordForSupabase(record, tableName, userId) {
         nombre: record.nombre || "",
         telefono: record.telefono || "",
         email: record.email || "",
+        tipo: record.tipo === "empresa" ? "empresa" : "persona",
+        servicio:
+          record.tipo === "empresa" ? record.servicio || "" : null,
+        monto_mensual:
+          record.tipo === "empresa"
+            ? normalizeNumber(record.montoMensual, 0)
+            : 0,
         notas: record.notas || "",
         fecha_creacion: isValidDate(record.fechaCreacion) || new Date().toISOString(),
         fecha_actualizacion: isValidDate(record.fechaActualizacion) || new Date().toISOString(),
@@ -209,6 +224,13 @@ export function mapRecordFromSupabase(record, tableName) {
         personaId: record.persona_id ?? null,
         personaNombre: record.persona_nombre || "",
         personaContacto: record.persona_contacto || "",
+        personaTipo: record.persona_tipo === "empresa" ? "empresa" : "persona",
+        personaServicio:
+          record.persona_tipo === "empresa" ? record.persona_servicio || "" : "",
+        personaMontoMensual:
+          record.persona_tipo === "empresa"
+            ? normalizeNumber(record.persona_monto_mensual, 0)
+            : 0,
         fechaInicio: record.fecha_inicio || record.fecha_creacion,
         fechaCreacion: record.fecha_creacion,
         fechaLimite: record.fecha_vencimiento,
@@ -224,6 +246,13 @@ export function mapRecordFromSupabase(record, tableName) {
         nombre: record.nombre,
         telefono: record.telefono || "",
         email: record.email || "",
+        tipo: record.tipo === "empresa" ? "empresa" : "persona",
+        servicio:
+          record.tipo === "empresa" ? record.servicio || "" : "",
+        montoMensual:
+          record.tipo === "empresa"
+            ? normalizeNumber(record.monto_mensual, 0)
+            : 0,
         notas: record.notas || "",
         fechaCreacion: record.fecha_creacion,
         fechaActualizacion: record.fecha_actualizacion || record.updated_at,

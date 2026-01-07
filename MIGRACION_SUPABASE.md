@@ -77,6 +77,8 @@ En el panel de Supabase, ve a **Table Editor** y verifica que se crearon:
 
 > ℹ️ El script agrega automáticamente columnas JSON (aportes, pagos, depositos, metadata, etc.) para reflejar todos los campos que usa la app. Si ya tenías el esquema anterior, vuelve a ejecutar `supabase/schema.sql`; las nuevas columnas se crearán con `ALTER TABLE IF NOT EXISTS` sin borrar datos.
 
+> 🆕 Desde esta versión puedes registrar contactos tipo empresa (ChatGPT, Notion, etc.). Asegúrate de aplicar el script para crear las columnas `tipo`, `servicio` y `monto_mensual` en `debtors`, así como `persona_tipo`, `persona_servicio` y `persona_monto_mensual` en `debts`.
+
 ---
 
 ## 📦 Paso 3: Instalar Dependencias

@@ -56,7 +56,7 @@ export async function renderDebts() {
           <div style="display: flex; gap: var(--spacing-sm);">
             <button class="btn btn--secondary" onclick="window.openDebtorModal()">
               <span>👥</span>
-              <span>Personas</span>
+              <span>Contactos</span>
             </button>
             <button class="btn btn--primary" onclick="window.openDebtModal()">
               <span>➕</span>
@@ -188,11 +188,11 @@ export async function renderDebts() {
         </div>
       </div>
 
-      <!-- Modal para gestionar personas -->
+      <!-- Modal para gestionar contactos -->
       <div id="debtor-modal" class="modal-overlay" style="display: none;">
         <div class="modal modal--large">
           <div class="modal__header">
-            <h3 class="modal__title">Personas que deben dinero</h3>
+            <h3 class="modal__title">Contactos: personas y empresas</h3>
             <button class="modal__close" onclick="window.closeDebtorModal()">✕</button>
           </div>
           <div class="modal__body">
@@ -201,6 +201,31 @@ export async function renderDebts() {
               <div class="form-group">
                 <label class="form-label form-label--required" for="debtor-name">Nombre completo</label>
                 <input type="text" id="debtor-name" class="form-input" placeholder="Ej: Juan Pérez" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label form-label--required">Tipo de contacto</label>
+                <div style="display:flex; gap: var(--spacing-md); flex-wrap: wrap;">
+                  <label style="display:flex; align-items:center; gap: var(--spacing-xs); font-weight: var(--font-weight-medium); cursor: pointer;">
+                    <input type="radio" name="debtor-type" value="persona" checked>
+                    <span>Persona</span>
+                  </label>
+                  <label style="display:flex; align-items:center; gap: var(--spacing-xs); font-weight: var(--font-weight-medium); cursor: pointer;">
+                    <input type="radio" name="debtor-type" value="empresa">
+                    <span>Empresa / Servicio</span>
+                  </label>
+                </div>
+                <small class="form-hint">Usa <strong>Empresa</strong> para registrar suscripciones como ChatGPT, Notion, etc.</small>
+              </div>
+              <div id="debtor-company-fields" style="display:none;">
+                <div class="form-group">
+                  <label class="form-label form-label--required" for="debtor-service">Servicio o descripción</label>
+                  <input type="text" id="debtor-service" class="form-input" placeholder="Ej: Suscripción ChatGPT Plus">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="debtor-monthly">Monto mensual estimado</label>
+                  <input type="number" id="debtor-monthly" class="form-input" placeholder="0.00" step="0.01" min="0">
+                  <small class="form-hint">Solo informativo: te ayuda a identificar cuánto pagas por este servicio.</small>
+                </div>
               </div>
               <div class="form-grid" style="display:grid; gap: var(--spacing-md); grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
                 <div class="form-group">
@@ -225,7 +250,7 @@ export async function renderDebts() {
             <button class="btn btn--secondary" onclick="window.closeDebtorModal()">Cerrar</button>
             <div style="display:flex; gap: var(--spacing-sm);">
               <button class="btn btn--ghost" onclick="window.resetDebtorForm()">Limpiar</button>
-              <button class="btn btn--primary" onclick="window.saveDebtor()">Guardar Persona</button>
+              <button class="btn btn--primary" onclick="window.saveDebtor()">Guardar contacto</button>
             </div>
           </div>
         </div>
@@ -561,14 +586,22 @@ function renderDebtGroup({ title, description, actives, archived }) {
 
 function renderDebtorOptions() {
   if (currentDebtors.length === 0) {
-    return `<option value="" disabled>No hay personas registradas aún</option>`;
+    return `<option value="" disabled>No hay contactos registrados aún</option>`;
   }
 
   return currentDebtors
     .map(
       (debtor) => `
       <option value="${debtor.id}">
-        ${debtor.nombre}${debtor.telefono ? ` - ${debtor.telefono}` : ""}
+        ${debtor.tipo === "empresa" ? "🏢" : "👤"} ${debtor.nombre}${
+         debtor.tipo === "empresa"
+           ? debtor.servicio
+             ? ` · ${debtor.servicio}`
+             : ""
+           : debtor.telefono
+           ? ` - ${debtor.telefono}`
+           : ""
+       }
       </option>
     `
     )
@@ -580,8 +613,8 @@ function renderDebtorList() {
     return `
       <div class="empty-state" style="box-shadow:none; border:1px dashed var(--color-border);">
         <div class="empty-state__icon">👥</div>
-        <h3 class="empty-state__title">Sin personas registradas</h3>
-        <p class="empty-state__description">Agrega tu primera persona para asociarla a las deudas.</p>
+        <h3 class="empty-state__title">Sin contactos registrados</h3>
+        <p class="empty-state__description">Agrega una persona o empresa para vincularla a tus cuentas.</p>
       </div>
     `;
   }
@@ -593,10 +626,28 @@ function renderDebtorList() {
           (person) => `
         <div style="display:flex; justify-content:space-between; align-items:center; padding: var(--spacing-sm); border-bottom:1px solid var(--color-border);">
           <div>
-            <div style="font-weight: var(--font-weight-semibold);">${person.nombre}</div>
+            <div style="display:flex; align-items:center; gap: var(--spacing-xs); font-weight: var(--font-weight-semibold);">
+              <span>${person.tipo === "empresa" ? "🏢" : "👤"}</span>
+              <span>${person.nombre}</span>
+              <span class="badge ${
+                person.tipo === "empresa" ? "badge--warning" : "badge--info"
+              }">${person.tipo === "empresa" ? "Empresa" : "Persona"}</span>
+            </div>
             <div style="font-size: var(--font-size-xs); color: var(--color-text-secondary);">
               ${[person.telefono, person.email].filter(Boolean).join(" · ") || "Sin contacto"}
             </div>
+            ${
+              person.tipo === "empresa" && (person.servicio || person.montoMensual)
+                ? `<div style="font-size: var(--font-size-xs); color: var(--color-text-secondary);">
+                    Servicio: ${person.servicio || "Recurrente"}
+                    ${
+                      person.montoMensual
+                        ? `· ${formatCurrency(person.montoMensual)} / mes`
+                        : ""
+                    }
+                  </div>`
+                : ""
+            }
             ${
               person.notas
                 ? `<div style="font-size: var(--font-size-xs); color: var(--color-text-tertiary);">${person.notas}</div>`
@@ -618,7 +669,12 @@ function renderDebtorList() {
 function renderExportToolbar() {
   const pagosRegistrados = currentDebts.some((debt) => debt.pagos.length > 0);
   const personaOptions = currentDebtors
-    .map((debtor) => `<option value="${debtor.id}">${debtor.nombre}</option>`)
+    .map(
+      (debtor) =>
+        `<option value="${debtor.id}">${
+          debtor.tipo === "empresa" ? "🏢" : "👤"
+        } ${debtor.nombre}</option>`
+    )
     .join("");
 
   return `
@@ -627,13 +683,13 @@ function renderExportToolbar() {
         <div>
           <div style="font-weight: var(--font-weight-semibold); font-size: var(--font-size-base);">Exportar pagos en PDF</div>
           <p style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-top: var(--spacing-xxs);">
-            Descarga un reporte con todos los pagos registrados por persona o para todas tus deudas.
+            Descarga un reporte con todos los pagos registrados por contacto o para todas tus deudas.
           </p>
         </div>
         <div style="min-width: 220px;">
-          <label class="form-label" for="export-person-filter">Filtrar por persona</label>
+          <label class="form-label" for="export-person-filter">Filtrar por contacto</label>
           <select id="export-person-filter" class="form-input">
-            <option value="">Todas las personas</option>
+            <option value="">Todos los contactos</option>
             ${personaOptions}
           </select>
         </div>
@@ -708,12 +764,30 @@ function renderDebtCard(debt) {
           </div>
           ${
             debt.personaNombre
-              ? `<div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">👤 ${debt.personaNombre}${
-                  debt.personaContacto
-                    ? ` · <span style="color: var(--color-text-tertiary);">${debt.personaContacto}</span>`
+              ? `
+            <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary); display:flex; flex-direction:column; gap:2px;">
+              <span>
+                ${debt.personaTipo === "empresa" ? "🏢" : "👤"} ${debt.personaNombre}
+                ${
+                  debt.personaTipo === "empresa" && debt.personaServicio
+                    ? `· <span style="color: var(--color-text-tertiary);">${debt.personaServicio}</span>`
                     : ""
-                }</div>`
-              : `<div class="badge badge--secondary" style="margin-top: var(--spacing-xxs);">Sin persona asignada</div>`
+                }
+              </span>
+              ${
+                debt.personaContacto
+                  ? `<span style="color: var(--color-text-tertiary);">${debt.personaContacto}</span>`
+                  : ""
+              }
+              ${
+                debt.personaTipo === "empresa" && debt.personaMontoMensual
+                  ? `<span style="color: var(--color-text-tertiary);">${formatCurrency(
+                      debt.personaMontoMensual
+                    )} / mes aproximado</span>`
+                  : ""
+              }
+            </div>`
+              : `<div class="badge badge--secondary" style="margin-top: var(--spacing-xxs);">Sin contacto asignado</div>`
           }
         </div>
         <div style="display: flex; gap: var(--spacing-xs);">
@@ -1193,6 +1267,7 @@ function attachEventListeners() {
     const modal = document.getElementById("debtor-modal");
     if (!modal) return;
     refreshDebtorUI();
+    updateDebtorTypeUI();
     modal.style.display = "flex";
   };
 
@@ -1203,6 +1278,11 @@ function attachEventListeners() {
   window.resetDebtorForm = () => {
     document.getElementById("debtor-form").reset();
     document.getElementById("debtor-id").value = "";
+    const typeInputs = document.querySelectorAll('input[name="debtor-type"]');
+    typeInputs.forEach((input) => {
+      input.checked = input.value === "persona";
+    });
+    updateDebtorTypeUI("persona");
   };
 
   window.saveDebtor = async () => {
@@ -1217,6 +1297,14 @@ function attachEventListeners() {
     const telefono = document.getElementById("debtor-phone").value;
     const email = document.getElementById("debtor-email").value;
     const notas = document.getElementById("debtor-notes").value;
+    const tipo =
+      document.querySelector('input[name="debtor-type"]:checked')?.value ||
+      "persona";
+    const servicio = document.getElementById("debtor-service").value;
+    const montoMensualValue = document.getElementById("debtor-monthly").value;
+    const montoMensual = montoMensualValue
+      ? parseFloat(montoMensualValue)
+      : 0;
 
     try {
       const debtor = new Debtor({
@@ -1225,6 +1313,9 @@ function attachEventListeners() {
         telefono,
         email,
         notas,
+        tipo,
+        servicio,
+        montoMensual,
       });
 
       let savedId = debtor.id;
@@ -1237,9 +1328,9 @@ function attachEventListeners() {
       await reloadDebtors();
       refreshDebtorUI(savedId);
       window.resetDebtorForm();
-      notifySuccess("Persona guardada correctamente");
+      notifySuccess("Contacto guardado correctamente");
     } catch (error) {
-      notifyError("Error al guardar persona: " + error.message);
+      notifyError("Error al guardar contacto: " + error.message);
     }
   };
 
@@ -1257,21 +1348,31 @@ function attachEventListeners() {
     document.getElementById("debtor-phone").value = debtor.telefono || "";
     document.getElementById("debtor-email").value = debtor.email || "";
     document.getElementById("debtor-notes").value = debtor.notas || "";
+    const typeInputs = document.querySelectorAll('input[name="debtor-type"]');
+    const selectedType = debtor.tipo === "empresa" ? "empresa" : "persona";
+    typeInputs.forEach((input) => {
+      input.checked = input.value === selectedType;
+    });
+    document.getElementById("debtor-service").value = debtor.servicio || "";
+    document.getElementById("debtor-monthly").value = debtor.montoMensual
+      ? Number(debtor.montoMensual).toFixed(2)
+      : "";
+    updateDebtorTypeUI(selectedType);
   };
 
   window.deleteDebtor = async (debtorId) => {
     const linkedDebts = currentDebts.filter((d) => d.personaId === debtorId);
     if (linkedDebts.length > 0) {
       notifyInfo(
-        "No puedes eliminar esta persona porque tiene deudas asociadas. Edita o elimina esas deudas primero."
+        "No puedes eliminar este contacto porque tiene deudas asociadas. Edita o elimina esas deudas primero."
       );
       return;
     }
 
     const debtor = currentDebtors.find((d) => d.id === debtorId);
     const confirmed = await confirmDialog({
-      title: "Eliminar persona",
-      message: `¿Eliminar a "${debtor?.nombre || "esta persona"}" de la lista?`,
+      title: "Eliminar contacto",
+      message: `¿Eliminar a "${debtor?.nombre || "este contacto"}" de la lista?`,
       confirmText: "Eliminar",
       cancelText: "Cancelar",
       type: "danger",
@@ -1283,7 +1384,7 @@ function attachEventListeners() {
       await reloadDebtors();
       refreshDebtorUI();
     } catch (error) {
-      notifyError("Error al eliminar persona: " + error.message);
+      notifyError("Error al eliminar contacto: " + error.message);
     }
   };
 
@@ -1292,6 +1393,14 @@ function attachEventListeners() {
       window.closeDebtorModal();
     }
   });
+
+  const debtorTypeInputs = document.querySelectorAll('input[name="debtor-type"]');
+  debtorTypeInputs.forEach((input) => {
+    input.addEventListener("change", () => {
+      updateDebtorTypeUI(input.value);
+    });
+  });
+  updateDebtorTypeUI();
 
   document
     .querySelectorAll('input[name="debt-type"]')
@@ -1326,7 +1435,7 @@ function attachEventListeners() {
     targetDebts.forEach((debt) => {
       debt.pagos.forEach((pago) => {
         pagos.push({
-          persona: debt.personaNombre || "Sin persona",
+          persona: debt.personaNombre || "Sin contacto",
           deuda: debt.nombre,
           fecha: pago.fecha,
           monto: pago.monto,
@@ -1348,7 +1457,7 @@ function attachEventListeners() {
     try {
       exportPaymentsReportPDF({
         pagos,
-        personaNombre: persona?.nombre || "Todas las personas",
+        personaNombre: persona?.nombre || "Todos los contactos",
         tipo,
       });
     } catch (error) {
@@ -1378,9 +1487,29 @@ function refreshDebtorSelect(preferredValue = null) {
       ? String(preferredValue)
       : select.value;
 
-  select.innerHTML = `<option value="">Sin asignar</option>${renderDebtorOptions()}`;
+  select.innerHTML = `<option value="">Sin contacto asignado</option>${renderDebtorOptions()}`;
   if (currentValue) {
     select.value = currentValue;
+  }
+}
+
+function updateDebtorTypeUI(forcedType = null) {
+  const selectedType =
+    forcedType ||
+    document.querySelector('input[name="debtor-type"]:checked')?.value ||
+    "persona";
+  const companyFields = document.getElementById("debtor-company-fields");
+  if (companyFields) {
+    companyFields.style.display = selectedType === "empresa" ? "block" : "none";
+  }
+  const serviceInput = document.getElementById("debtor-service");
+  if (serviceInput) {
+    serviceInput.required = selectedType === "empresa";
+    serviceInput.disabled = selectedType !== "empresa";
+  }
+  const monthlyInput = document.getElementById("debtor-monthly");
+  if (monthlyInput) {
+    monthlyInput.disabled = selectedType !== "empresa";
   }
 }
 

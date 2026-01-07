@@ -60,7 +60,19 @@ export function exportDebtPaymentsPDF(debt) {
   doc.text(`Generado el ${formatDate(new Date().toISOString())}`, 14, 28);
   const lines = [];
   if (debt.personaNombre) {
-    lines.push(`Persona: ${debt.personaNombre}`);
+    const contactoTipo = debt.personaTipo === "empresa" ? "Empresa" : "Contacto";
+    const servicioInfo =
+      debt.personaTipo === "empresa" && debt.personaServicio
+        ? ` (${debt.personaServicio})`
+        : "";
+    lines.push(`${contactoTipo}: ${debt.personaNombre}${servicioInfo}`);
+    if (debt.personaTipo === "empresa" && debt.personaMontoMensual) {
+      lines.push(
+        `Monto mensual estimado: ${formatCurrencyValue(
+          debt.personaMontoMensual
+        )}`
+      );
+    }
   }
   lines.push(
     `Tipo: ${debt.tipo === "yo-debo" ? "Cuenta por pagar" : "Cuenta por cobrar"}`
@@ -141,7 +153,7 @@ export function exportPaymentsReportPDF({ pagos, personaNombre, tipo }) {
   doc.setFontSize(16);
   doc.text("Reporte de pagos recibidos", 14, 20);
   doc.setFontSize(11);
-  const line1 = `Persona: ${personaNombre}`;
+  const line1 = `Contacto: ${personaNombre}`;
   const line2 =
     tipo === "yo-debo"
       ? "Tipo: Cuentas por pagar"
@@ -156,7 +168,7 @@ export function exportPaymentsReportPDF({ pagos, personaNombre, tipo }) {
 
   doc.autoTable({
     startY: 40,
-    head: [["Persona", "Deuda", "Tipo", "Fecha", "Monto", "Nota"]],
+    head: [["Contacto", "Deuda", "Tipo", "Fecha", "Monto", "Nota"]],
     body: pagos.map((pago) => [
       pago.persona,
       pago.deuda,
@@ -200,8 +212,8 @@ export function exportPaymentsReportPDF({ pagos, personaNombre, tipo }) {
   );
 
   const filename =
-    personaNombre === "Todas las personas"
-      ? "pagos-todas-las-personas.pdf"
+    personaNombre === "Todos los contactos"
+      ? "pagos-todos-los-contactos.pdf"
       : `pagos-${personaNombre.replace(/\s+/g, "-").toLowerCase()}.pdf`;
   doc.save(filename);
 }

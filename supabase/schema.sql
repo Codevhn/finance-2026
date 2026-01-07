@@ -55,6 +55,12 @@ CREATE TABLE IF NOT EXISTS debts (
   monto_pagado NUMERIC(10, 2) DEFAULT 0,
   tasa_interes NUMERIC(5, 2) DEFAULT 0,
   fecha_vencimiento DATE,
+  persona_id INTEGER,
+  persona_nombre TEXT,
+  persona_contacto TEXT,
+  persona_tipo TEXT DEFAULT 'persona',
+  persona_servicio TEXT,
+  persona_monto_mensual NUMERIC(10, 2) DEFAULT 0,
   archivada BOOLEAN DEFAULT FALSE,
   fecha_creacion TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   notas TEXT,
@@ -77,6 +83,9 @@ ALTER TABLE debts ADD COLUMN IF NOT EXISTS tipo TEXT DEFAULT 'me-deben';
 ALTER TABLE debts ADD COLUMN IF NOT EXISTS persona_id INTEGER;
 ALTER TABLE debts ADD COLUMN IF NOT EXISTS persona_nombre TEXT;
 ALTER TABLE debts ADD COLUMN IF NOT EXISTS persona_contacto TEXT;
+ALTER TABLE debts ADD COLUMN IF NOT EXISTS persona_tipo TEXT DEFAULT 'persona';
+ALTER TABLE debts ADD COLUMN IF NOT EXISTS persona_servicio TEXT;
+ALTER TABLE debts ADD COLUMN IF NOT EXISTS persona_monto_mensual NUMERIC(10, 2) DEFAULT 0;
 ALTER TABLE debts ADD COLUMN IF NOT EXISTS fecha_inicio TIMESTAMP WITH TIME ZONE;
 ALTER TABLE debts ADD COLUMN IF NOT EXISTS fecha_archivado TIMESTAMP WITH TIME ZONE;
 ALTER TABLE debts ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMP WITH TIME ZONE;
@@ -92,6 +101,9 @@ CREATE TABLE IF NOT EXISTS debtors (
   nombre TEXT NOT NULL,
   telefono TEXT,
   email TEXT,
+  tipo TEXT NOT NULL DEFAULT 'persona',
+  servicio TEXT,
+  monto_mensual NUMERIC(10, 2) DEFAULT 0,
   monto_total_prestado NUMERIC(10, 2) DEFAULT 0,
   monto_total_pagado NUMERIC(10, 2) DEFAULT 0,
   notas TEXT,
@@ -108,6 +120,9 @@ ALTER TABLE debtors ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users 
 ALTER TABLE debtors ALTER COLUMN user_id SET DEFAULT auth.uid();
 
 ALTER TABLE debtors ADD COLUMN IF NOT EXISTS fecha_actualizacion TIMESTAMP WITH TIME ZONE;
+ALTER TABLE debtors ADD COLUMN IF NOT EXISTS tipo TEXT DEFAULT 'persona';
+ALTER TABLE debtors ADD COLUMN IF NOT EXISTS servicio TEXT;
+ALTER TABLE debtors ADD COLUMN IF NOT EXISTS monto_mensual NUMERIC(10, 2) DEFAULT 0;
 ALTER TABLE debtors ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMP WITH TIME ZONE;
 ALTER TABLE debtors ADD COLUMN IF NOT EXISTS remote_id TEXT;
 

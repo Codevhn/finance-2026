@@ -10,11 +10,11 @@ import {
   notifyInfo,
   notifySuccess,
   confirmDialog,
-  selectOptionDialog,
 } from "../ui/notifications.js";
 import { formatCurrency } from "../utils/formatters.js";
 
 let currentSavings = [];
+let pendingRandomSaving = null;
 
 export async function renderSavings() {
   const mainContent = document.getElementById("main-content");
@@ -102,9 +102,36 @@ export async function renderSavings() {
           <div class="modal__footer">
             <button class="btn btn--secondary" onclick="window.closeSavingModal()">Cancelar</button>
             <button class="btn btn--primary" onclick="window.saveSaving()">Guardar</button>
-          </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal para ahorro aleatorio -->
+  <div id="random-saving-modal" class="modal-overlay" style="display: none;">
+    <div class="modal">
+      <div class="modal__header">
+        <h3 class="modal__title">Asignar ahorro aleatorio</h3>
+        <button class="modal__close" onclick="window.closeRandomSavingModal()">✕</button>
+      </div>
+      <div class="modal__body">
+        <p class="form-hint">
+          Generamos un monto al azar para impulsar tu hábito de ahorro. Selecciona en qué fondo quieres guardarlo.
+        </p>
+        <div class="card" style="margin: var(--spacing-md) 0; text-align:center;">
+          <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Monto sugerido</div>
+          <div style="font-size: 2.5rem; font-weight: var(--font-weight-bold);" id="random-saving-amount">0.00</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="random-saving-select">Fondo de ahorro</label>
+          <select id="random-saving-select" class="form-input"></select>
         </div>
       </div>
+      <div class="modal__footer">
+        <button class="btn btn--secondary" onclick="window.closeRandomSavingModal()">Cancelar</button>
+        <button class="btn btn--primary" onclick="window.confirmRandomSaving()">Agregar ahorro</button>
+      </div>
+    </div>
+  </div>
 
       <!-- Modal para depositar -->
       <div id="deposit-modal" class="modal-overlay" style="display: none;">
@@ -802,68 +829,78 @@ function attachEventListeners() {
     }
   };
 
-  window.generateRandomSaving = async () => {
+  window.generateRandomSaving = () => {
     try {
-      // Verificar que haya fondos
       if (currentSavings.length === 0) {
         notifyInfo("Primero debes crear un fondo de ahorro");
         return;
       }
 
-      const monto = savingRepository.generarAhorroAleatorio();
-      const confirmed = await confirmDialog({
-        title: "Ahorro aleatorio",
-        message: `🎲 Se generaron ${formatCurrency(
-          monto
-        )}. ¿Deseas agregarlos a uno de tus fondos?`,
-        confirmText: "Sí, agregar",
-        cancelText: "Cancelar",
-        type: "info",
-      });
-      if (!confirmed) return;
-
-      if (currentSavings.length === 1) {
-        await savingRepository.depositar(
-          currentSavings[0].id,
-          monto,
-          "Ahorro aleatorio 🎲"
-        );
-        notifySuccess(
-          `${formatCurrency(monto)} agregados a "${currentSavings[0].nombre}"`
-        );
-        await renderSavings();
-        return;
+      pendingRandomSaving = savingRepository.generarAhorroAleatorio();
+      const modal = document.getElementById("random-saving-modal");
+      const amountEl = document.getElementById("random-saving-amount");
+      const select = document.getElementById("random-saving-select");
+      if (!modal || !amountEl || !select) {
+        throw new Error("No se pudo abrir el modal de ahorro aleatorio");
       }
 
-      const selection = await selectOptionDialog({
-        title: "Selecciona el fondo",
-        message: `¿Dónde quieres agregar ${formatCurrency(monto)}?`,
-        options: currentSavings.map((saving) => ({
-          value: saving.id,
-          label: saving.nombre,
-        })),
-        confirmText: "Agregar",
-        cancelText: "Cancelar",
-      });
-      if (!selection) return;
+      amountEl.textContent = formatCurrency(pendingRandomSaving);
+      select.innerHTML = currentSavings
+        .map(
+          (saving) =>
+            `<option value="${saving.id}">${saving.nombre}</option>`
+        )
+        .join("");
+      select.value = currentSavings[0]?.id
+        ? String(currentSavings[0].id)
+        : "";
+      select.disabled = currentSavings.length === 1;
+      modal.style.display = "flex";
+    } catch (error) {
+      console.error("Error al preparar ahorro aleatorio:", error);
+      notifyError("No se pudo preparar el ahorro aleatorio: " + error.message);
+    }
+  };
 
-      const selectedSaving = currentSavings.find(
-        (saving) => saving.id === parseInt(selection, 10)
-      );
-      if (!selectedSaving) return;
+  window.closeRandomSavingModal = () => {
+    const modal = document.getElementById("random-saving-modal");
+    if (modal) {
+      modal.style.display = "none";
+    }
+    pendingRandomSaving = null;
+  };
 
+  window.confirmRandomSaving = async () => {
+    if (!pendingRandomSaving || pendingRandomSaving <= 0) {
+      notifyError("Primero genera un monto aleatorio.");
+      return;
+    }
+
+    const select = document.getElementById("random-saving-select");
+    const savingId = select?.value ? parseInt(select.value, 10) : null;
+    const selectedSaving =
+      currentSavings.find((saving) => saving.id === savingId) ||
+      currentSavings[0];
+    if (!selectedSaving) {
+      notifyError("Selecciona un fondo válido para continuar.");
+      return;
+    }
+
+    try {
       await savingRepository.depositar(
         selectedSaving.id,
-        monto,
+        pendingRandomSaving,
         "Ahorro aleatorio 🎲"
       );
       notifySuccess(
-        `${formatCurrency(monto)} agregados a "${selectedSaving.nombre}"`
+        `${formatCurrency(pendingRandomSaving)} agregados a "${selectedSaving.nombre}"`
       );
+      pendingRandomSaving = null;
+      window.closeRandomSavingModal();
       await renderSavings();
     } catch (error) {
-      console.error("Error al generar ahorro aleatorio:", error);
-      notifyError("Error al generar ahorro aleatorio: " + error.message);
+      console.error("Error al guardar ahorro aleatorio:", error);
+      notifyError("No se pudo guardar el ahorro aleatorio: " + error.message);
     }
   };
 
@@ -883,6 +920,12 @@ function attachEventListeners() {
   document.getElementById("withdraw-modal")?.addEventListener("click", (e) => {
     if (e.target.id === "withdraw-modal") {
       window.closeWithdrawModal();
+    }
+  });
+
+  document.getElementById("random-saving-modal")?.addEventListener("click", (e) => {
+    if (e.target.id === "random-saving-modal") {
+      window.closeRandomSavingModal();
     }
   });
 }
