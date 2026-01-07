@@ -20,6 +20,8 @@ CREATE TABLE IF NOT EXISTS goals (
   fecha_creacion TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   fecha_completada TIMESTAMP WITH TIME ZONE,
   aporte_sugerido_diario NUMERIC(10, 2),
+  ahorro_anual_id INTEGER,
+  ahorro_anual_nombre TEXT,
   notas TEXT,
   sync_status TEXT DEFAULT 'synced',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -44,6 +46,8 @@ ALTER TABLE goals ADD COLUMN IF NOT EXISTS ciclo_actual INTEGER DEFAULT 1;
 ALTER TABLE goals ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMP WITH TIME ZONE;
 ALTER TABLE goals ADD COLUMN IF NOT EXISTS remote_id TEXT;
 ALTER TABLE goals ADD COLUMN IF NOT EXISTS aporte_sugerido_diario NUMERIC(10, 2);
+ALTER TABLE goals ADD COLUMN IF NOT EXISTS ahorro_anual_id INTEGER;
+ALTER TABLE goals ADD COLUMN IF NOT EXISTS ahorro_anual_nombre TEXT;
 
 -- ============================================
 -- TABLA: debts (Deudas)

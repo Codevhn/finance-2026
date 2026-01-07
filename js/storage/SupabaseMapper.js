@@ -41,6 +41,11 @@ const normalizeNullableNumber = (value) => {
   return Number.isFinite(num) ? num : null;
 };
 
+const normalizeNullableInteger = (value) => {
+  const num = Number(value);
+  return Number.isInteger(num) ? num : null;
+};
+
 const getLocalId = (record) => {
   if (typeof record.id === "number") return record.id;
   if (typeof record.local_id === "number") return record.local_id;
@@ -78,6 +83,8 @@ export function formatRecordForSupabase(record, tableName, userId) {
         aporte_sugerido_diario: normalizeNullableNumber(
           record.aporteSugeridoDiario
         ),
+        ahorro_anual_id: normalizeNullableInteger(record.ahorroAnualId),
+        ahorro_anual_nombre: record.ahorroAnualNombre || null,
         notas: record.notas || null,
         debt_id: record.debtId ?? null,
         debt_nombre: record.debtNombre || null,
@@ -221,6 +228,8 @@ export function mapRecordFromSupabase(record, tableName) {
         aporteSugeridoDiario: normalizeNullableNumber(
           record.aporte_sugerido_diario
         ),
+        ahorroAnualId: normalizeNullableInteger(record.ahorro_anual_id),
+        ahorroAnualNombre: record.ahorro_anual_nombre || "",
         notas: record.notas || "",
         aportes: normalizeArray(record.aportes, []),
         debtId: record.debt_id ?? null,

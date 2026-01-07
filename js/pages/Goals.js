@@ -5,6 +5,7 @@
 
 import goalRepository from "../storage/GoalRepository.js";
 import debtRepository from "../storage/DebtRepository.js";
+import savingRepository from "../storage/SavingRepository.js";
 import { Goal } from "../domain/Goal.js";
 import {
   notifyError,
@@ -16,6 +17,7 @@ import { formatCurrency } from "../utils/formatters.js";
 let currentGoals = [];
 let cachedDebts = [];
 const GOAL_DUE_SOON_THRESHOLD_DAYS = 5;
+let cachedAnnualSavings = [];
 
 export async function renderGoals() {
   const mainContent = document.getElementById("main-content");
@@ -153,12 +155,16 @@ export async function renderGoals() {
 }
 
 async function loadGoals() {
-  const [goals, debts] = await Promise.all([
+  const [goals, debts, savings] = await Promise.all([
     goalRepository.getAll(),
     debtRepository.getAll(),
+    savingRepository.getAll(),
   ]);
   currentGoals = goals;
   cachedDebts = debts;
+  cachedAnnualSavings = savings
+    .filter((saving) => saving.metaAnual)
+    .sort((a, b) => (a.nombre || "").localeCompare(b.nombre || ""));
 }
 
 function renderGoalsContent() {
@@ -296,6 +302,26 @@ function renderGoalCard(goal) {
           isCompleted
             ? `
           <div class="badge badge--success" style="margin-bottom: var(--spacing-md);">✅ Completada</div>
+        `
+            : ""
+        }
+
+        ${
+          goal.ahorroAnualId
+            ? `
+          <div style="margin-top: var(--spacing-md); padding: var(--spacing-sm); background: var(--color-bg-secondary); border-radius: var(--border-radius-md); border: 1px dashed var(--color-border);">
+            <div style="font-size: var(--font-size-xs); color: var(--color-text-tertiary);">Ahorro anual vinculado</div>
+            <div style="font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); color: var(--color-text-primary);">
+              ${goal.ahorroAnualNombre || "Ahorro anual"}
+            </div>
+            <div style="font-size: var(--font-size-xs); color: var(--color-text-secondary); margin-top: var(--spacing-xxs);">
+              ${
+                isCompleted
+                  ? "El monto de este ciclo ya se transfirió automáticamente al ahorro."
+                  : "Al completar la meta, el monto se transferirá automáticamente a este ahorro."
+              }
+            </div>
+          </div>
         `
             : ""
         }
@@ -533,6 +559,12 @@ function attachEventListeners() {
     if (debtSelect) {
       debtSelect.innerHTML = renderDebtSelectOptions(goal?.debtId ?? null);
     }
+    const savingsSelect = document.getElementById("goal-savings");
+    if (savingsSelect) {
+      savingsSelect.innerHTML = renderAnnualSavingsOptions(
+        goal?.ahorroAnualId ?? null
+      );
+    }
 
     if (goalId && !goal) {
       notifyError("No se encontró la meta seleccionada.");
@@ -594,6 +626,13 @@ function attachEventListeners() {
       normalizedDebtId !== null
         ? cachedDebts.find((debt) => debt.id === normalizedDebtId)
         : null;
+    const savingsValue = document.getElementById("goal-savings").value;
+    const parsedSavingsId =
+      savingsValue && savingsValue !== "" ? parseInt(savingsValue, 10) : null;
+    const selectedSaving =
+      parsedSavingsId !== null && !Number.isNaN(parsedSavingsId)
+        ? cachedAnnualSavings.find((saving) => saving.id === parsedSavingsId)
+        : null;
 
     try {
       if (goalId) {
@@ -614,6 +653,16 @@ function attachEventListeners() {
           aporteSugeridoDiario !== null && !Number.isNaN(aporteSugeridoDiario)
             ? aporteSugeridoDiario
             : null;
+        if (selectedSaving) {
+          goal.ahorroAnualId = selectedSaving.id;
+          goal.ahorroAnualNombre = selectedSaving.nombre;
+        } else if (parsedSavingsId === null || Number.isNaN(parsedSavingsId)) {
+          goal.ahorroAnualId = null;
+          goal.ahorroAnualNombre = "";
+        } else {
+          goal.ahorroAnualId = parsedSavingsId;
+          goal.ahorroAnualNombre = goal.ahorroAnualNombre || "";
+        }
         const previousDebtId = goal.debtId;
         const nextDebtId = selectedDebt
           ? selectedDebt.id
@@ -648,6 +697,10 @@ function attachEventListeners() {
             !Number.isNaN(aporteSugeridoDiario)
               ? aporteSugeridoDiario
               : null,
+          ahorroAnualId: selectedSaving
+            ? selectedSaving.id
+            : parsedSavingsId || null,
+          ahorroAnualNombre: selectedSaving?.nombre || "",
           debtId: selectedDebt ? selectedDebt.id : null,
           debtNombre: selectedDebt ? selectedDebt.nombre : "",
           fechaLimite: parseOptionalDateInput(fechaLimiteInput),
@@ -755,6 +808,14 @@ function attachEventListeners() {
       if (resultado.progreso >= 100) {
         notifySuccess(
           "🎉 ¡Felicidades! Has completado tu meta. Se creó una nueva meta para el siguiente ciclo."
+        );
+      }
+
+      if (resultado.transferenciaAhorro) {
+        notifySuccess(
+          `Se transfirieron ${formatCurrency(
+            resultado.transferenciaAhorro.monto
+          )} al ahorro anual "${resultado.transferenciaAhorro.ahorroNombre}".`
         );
       }
 
@@ -955,6 +1016,44 @@ function renderDebtSelectOptions(selectedId = null) {
       getDebtNameById(effectiveSelectedId) || "Deuda no disponible";
     options.push(
       `<option value="${effectiveSelectedId}" selected>${fallbackName} (no disponible)</option>`
+    );
+  }
+
+  return options.join("");
+}
+
+function renderAnnualSavingsOptions(selectedId = null) {
+  const normalizedSelectedId =
+    selectedId === null || selectedId === undefined
+      ? null
+      : Number(selectedId);
+  const effectiveSelectedId = Number.isNaN(normalizedSelectedId)
+    ? null
+    : normalizedSelectedId;
+
+  if (!cachedAnnualSavings.length) {
+    return `<option value="">Sin ahorro anual disponible</option>`;
+  }
+
+  const options = [
+    `<option value="" ${effectiveSelectedId === null ? "selected" : ""}>Sin ahorro anual</option>`,
+  ];
+
+  options.push(
+    ...cachedAnnualSavings.map((saving) => {
+      const labelYear = saving.anioMeta ? ` (${saving.anioMeta})` : "";
+      return `<option value="${saving.id}" ${
+        effectiveSelectedId === saving.id ? "selected" : ""
+      }>${saving.nombre}${labelYear}</option>`;
+    })
+  );
+
+  if (
+    effectiveSelectedId !== null &&
+    !cachedAnnualSavings.some((saving) => saving.id === effectiveSelectedId)
+  ) {
+    options.push(
+      `<option value="${effectiveSelectedId}" selected>Ahorro ya no disponible</option>`
     );
   }
 

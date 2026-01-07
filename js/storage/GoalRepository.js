@@ -6,6 +6,7 @@
 import { BaseRepository } from "./BaseRepository.js";
 import { Goal } from "../domain/Goal.js";
 import debtRepository from "./DebtRepository.js";
+import savingRepository from "./SavingRepository.js";
 
 class GoalRepository extends BaseRepository {
   constructor() {
@@ -101,13 +102,19 @@ class GoalRepository extends BaseRepository {
 
     await this.update(goal);
 
+    let transferenciaAhorro = null;
+
+    if (goal.completada && goal.ahorroAnualId) {
+      transferenciaAhorro = await this.transferirAHorroAnual(goal);
+    }
+
     // Si se completó, crear nueva meta para el siguiente ciclo
     if (goal.completada) {
       const nuevaMeta = goal.reiniciarCiclo();
       await this.create(nuevaMeta);
     }
 
-    return resultado;
+    return { ...resultado, transferenciaAhorro };
   }
 
   /**
@@ -228,6 +235,40 @@ class GoalRepository extends BaseRepository {
       totalRestante: totalObjetivo - totalAportado,
       progresoPromedio,
     };
+  }
+
+  /**
+   * Transferir el total aportado al ahorro anual vinculado
+   * @param {Goal} goal
+   * @returns {Promise<{monto:number, ahorroNombre:string}|null>}
+   */
+  async transferirAHorroAnual(goal) {
+    try {
+      const savingId = Number(goal.ahorroAnualId);
+      if (!Number.isFinite(savingId)) {
+        return null;
+      }
+
+      const totalAportado = goal.getTotalAportado();
+      if (totalAportado <= 0) return null;
+
+      const saving = await savingRepository.getById(savingId);
+      if (!saving) {
+        console.warn(
+          "No se encontró el ahorro anual vinculado para la meta:",
+          goal.ahorroAnualId
+        );
+        return null;
+      }
+
+      const note = `Transferencia automática de "${goal.nombre}" (ciclo ${goal.cicloActual})`;
+      await savingRepository.depositar(saving.id, totalAportado, note);
+      goal.ahorroAnualNombre = saving.nombre;
+      return { monto: totalAportado, ahorroNombre: saving.nombre };
+    } catch (error) {
+      console.error("No se pudo transferir al ahorro anual:", error);
+      return null;
+    }
   }
 }
 

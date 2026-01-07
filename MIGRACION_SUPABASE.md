@@ -80,6 +80,8 @@ En el panel de Supabase, ve a **Table Editor** y verifica que se crearon:
 > 🆕 Desde esta versión puedes registrar contactos tipo empresa (ChatGPT, Notion, etc.). Asegúrate de aplicar el script para crear las columnas `tipo`, `servicio` y `monto_mensual` en `debtors`, así como `persona_tipo`, `persona_servicio` y `persona_monto_mensual` en `debts`.
 >
 > 🆕 También añadimos el campo opcional `aporte_sugerido_diario` en `goals` y `debts` para que guardes recordatorios de cuánto necesitas ahorrar/cobrar cada día. Ejecuta nuevamente `supabase/schema.sql` para crear este campo antes de sincronizar.
+>
+> 🆕 Las metas mensuales ahora pueden alimentar un ahorro anual. El script agrega `ahorro_anual_id` y `ahorro_anual_nombre` en `goals`. Ejecútalo para que la sincronización reconozca esa relación y pueda mover el monto automáticamente cuando completes la meta.
 
 ---
 

@@ -20,6 +20,9 @@ export class Goal {
     this.aporteSugeridoDiario = Number.isFinite(Number(data.aporteSugeridoDiario))
       ? Number(data.aporteSugeridoDiario)
       : null;
+    this.ahorroAnualId =
+      data.ahorroAnualId !== undefined ? data.ahorroAnualId : null;
+    this.ahorroAnualNombre = data.ahorroAnualNombre || "";
 
     // Campos para sincronización futura
     this.syncStatus = data.syncStatus || "local"; // 'local', 'synced', 'pending'
@@ -164,6 +167,8 @@ export class Goal {
       nombre: this.nombre,
       montoObjetivo: this.montoObjetivo,
       aporteSugeridoDiario: this.aporteSugeridoDiario,
+      ahorroAnualId: this.ahorroAnualId,
+      ahorroAnualNombre: this.ahorroAnualNombre,
       cicloActual: this.cicloActual + 1,
       debtId: this.debtId,
       debtNombre: this.debtNombre,
@@ -262,6 +267,8 @@ export class Goal {
       cicloActual: this.cicloActual,
       fechaCompletado: this.fechaCompletado,
       aporteSugeridoDiario: this.aporteSugeridoDiario,
+      ahorroAnualId: this.ahorroAnualId,
+      ahorroAnualNombre: this.ahorroAnualNombre,
       syncStatus: this.syncStatus,
       lastSyncedAt: this.lastSyncedAt,
       remoteId: this.remoteId,
