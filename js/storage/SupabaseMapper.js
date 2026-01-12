@@ -122,6 +122,7 @@ export function formatRecordForSupabase(record, tableName, userId) {
         aporte_sugerido_diario: normalizeNullableNumber(
           record.aporteSugeridoDiario
         ),
+        prestamo_pendiente: normalizeNumber(record.prestamoPendiente, 0),
         pagos,
       };
     }
@@ -156,6 +157,7 @@ export function formatRecordForSupabase(record, tableName, userId) {
         anio_meta: record.anioMeta ?? null,
         fecha_creacion: isValidDate(record.fechaCreacion) || new Date().toISOString(),
         ultima_evaluacion: normalizeObject(record.ultimaEvaluacion),
+        prestamo_pendiente: normalizeNumber(record.prestamoPendiente, 0),
         depositos,
       };
     }
@@ -263,6 +265,7 @@ export function mapRecordFromSupabase(record, tableName) {
         aporteSugeridoDiario: normalizeNullableNumber(
           record.aporte_sugerido_diario
         ),
+        prestamoPendiente: normalizeNumber(record.prestamo_pendiente, 0),
         pagos: normalizeArray(record.pagos, []),
       };
 
@@ -295,6 +298,7 @@ export function mapRecordFromSupabase(record, tableName) {
         anioMeta: record.anio_meta ?? null,
         fechaCreacion: record.fecha_creacion,
         ultimaEvaluacion: record.ultima_evaluacion || null,
+        prestamoPendiente: normalizeNumber(record.prestamo_pendiente, 0),
         depositos: normalizeArray(record.depositos, []),
       };
 

@@ -16,6 +16,9 @@ export class Saving {
       typeof data.anioMeta === "number" ? data.anioMeta : null;
     this.fechaCreacion = data.fechaCreacion || new Date().toISOString();
     this.ultimaEvaluacion = data.ultimaEvaluacion || null;
+    this.prestamoPendiente = Number.isFinite(Number(data.prestamoPendiente))
+      ? Number(data.prestamoPendiente)
+      : 0;
 
     // Campos para sincronización futura
     this.syncStatus = data.syncStatus || "local";
@@ -216,6 +219,10 @@ export class Saving {
       errores.push("El objetivo debe ser mayor a 0 o null");
     }
 
+    if (this.prestamoPendiente < 0) {
+      errores.push("El préstamo pendiente debe ser positivo");
+    }
+
     return {
       valido: errores.length === 0,
       errores,
@@ -237,6 +244,7 @@ export class Saving {
       anioMeta: this.anioMeta,
       fechaCreacion: this.fechaCreacion,
       ultimaEvaluacion: this.ultimaEvaluacion,
+      prestamoPendiente: this.prestamoPendiente,
       syncStatus: this.syncStatus,
       lastSyncedAt: this.lastSyncedAt,
       remoteId: this.remoteId,

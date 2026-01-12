@@ -142,6 +142,12 @@ export async function renderDebts() {
               </div>
 
               <div class="form-group">
+                <label class="form-label" for="debt-internal-loan">Préstamo pendiente en esta cuenta (Lps)</label>
+                <input type="number" id="debt-internal-loan" class="form-input" placeholder="0.00" step="0.01" min="0">
+                <small class="form-hint">Usa este campo si tomaste dinero de esta cuenta y debes reponerlo antes del pago.</small>
+              </div>
+
+              <div class="form-group">
                 <label class="form-label" for="debt-suggested">Aporte diario sugerido (Lps) - opcional</label>
                 <input type="number" id="debt-suggested" class="form-input" placeholder="0.00" step="0.01" min="0">
                 <small class="form-hint">Úsalo como recordatorio de cuánto deberías guardar para cubrir esta cuenta a tiempo.</small>
@@ -375,7 +381,13 @@ function getDueDateAlerts() {
       return {
         id: `due-${debt.id}`,
         title,
-        message: `La deuda "${debt.nombre}" ${dueStatus.label}. Fecha límite: ${dueStatus.formattedDate}.`,
+        message: `La deuda "${debt.nombre}" ${dueStatus.label}. Fecha límite: ${dueStatus.formattedDate}.${
+          Number(debt.prestamoPendiente) > 0
+            ? ` Recuerda reponer ${formatCurrency(
+                Number(debt.prestamoPendiente)
+              )} tomados de esta cuenta antes de esa fecha.`
+            : ""
+        }`,
         type: dueStatus.type,
         dismissible: false,
       };
@@ -721,6 +733,9 @@ function renderDebtCard(debt) {
   const progress = debt.calcularProgreso();
   const totalPagado = debt.getTotalPagado();
   const saldoRestante = debt.calcularSaldo();
+  const prestamoPendiente = Number.isFinite(Number(debt.prestamoPendiente))
+    ? Number(debt.prestamoPendiente)
+    : 0;
   const isArchived = debt.archivada;
   const tipoLabel =
     debt.tipo === DEBT_TYPES.I_OWE
@@ -903,6 +918,26 @@ function renderDebtCard(debt) {
         }
 
         ${
+          prestamoPendiente > 0
+            ? `
+          <div style="margin-top: var(--spacing-md); padding: var(--spacing-sm); border-radius: var(--border-radius-md); background: rgba(245, 158, 11, 0.12); border-left: 3px solid var(--color-warning);">
+            <div style="font-size: var(--font-size-xs); color: var(--color-warning);">Préstamo pendiente en esta cuenta</div>
+            <div style="font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); color: var(--color-text-primary);">
+              ${formatCurrency(prestamoPendiente)}
+            </div>
+            <div style="font-size: var(--font-size-xs); color: var(--color-text-secondary); margin-top: var(--spacing-xxs);">
+              ${
+                dueDateDisplay
+                  ? `Repónlo antes del ${dueDateDisplay} para llegar al pago completo.`
+                  : "Recuerda reponerlo para mantener esta cuenta al día."
+              }
+            </div>
+          </div>
+        `
+            : ""
+        }
+
+        ${
           !isArchived && dueDateDisplay
             ? `
           <div style="margin-top: var(--spacing-md); padding: var(--spacing-sm); background: var(--color-bg-tertiary); border-radius: var(--border-radius-md); border-left: 3px solid ${
@@ -1023,10 +1058,15 @@ function attachEventListeners() {
         if (debt.fechaLimite) {
           selectedDueDateValue = formatDateForInput(debt.fechaLimite);
         }
+        document.getElementById("debt-internal-loan").value =
+          Number(debt.prestamoPendiente) > 0
+            ? Number(debt.prestamoPendiente).toFixed(2)
+            : "";
       }
     } else {
       title.textContent = "Nueva Deuda";
       document.getElementById("debt-suggested").value = "";
+      document.getElementById("debt-internal-loan").value = "";
     }
 
     typeInputs.forEach((input) => {
@@ -1070,6 +1110,9 @@ function attachEventListeners() {
       aporteSugeridoValue !== ""
         ? parseFloat(aporteSugeridoValue)
         : null;
+    const prestamoValue = document.getElementById("debt-internal-loan").value;
+    const prestamoPendiente =
+      prestamoValue !== "" ? parseFloat(prestamoValue) : 0;
     const tipo =
       document.querySelector('input[name="debt-type"]:checked')?.value ||
       DEBT_TYPES.ME_OWED;
@@ -1092,6 +1135,9 @@ function attachEventListeners() {
           aporteSugeridoDiario !== null && !Number.isNaN(aporteSugeridoDiario)
             ? aporteSugeridoDiario
             : null;
+        debt.prestamoPendiente = Number.isFinite(prestamoPendiente)
+          ? prestamoPendiente
+          : 0;
         if (personaSeleccionada) {
           debt.asignarPersona(personaSeleccionada);
         } else {
@@ -1111,6 +1157,9 @@ function attachEventListeners() {
             !Number.isNaN(aporteSugeridoDiario)
               ? aporteSugeridoDiario
               : null,
+          prestamoPendiente: Number.isFinite(prestamoPendiente)
+            ? prestamoPendiente
+            : 0,
         });
         if (personaSeleccionada) {
           debt.asignarPersona(personaSeleccionada);

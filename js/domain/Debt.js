@@ -23,6 +23,9 @@ export class Debt {
     )
       ? Number(data.aporteSugeridoDiario)
       : null;
+    this.prestamoPendiente = Number.isFinite(Number(data.prestamoPendiente))
+      ? Number(data.prestamoPendiente)
+      : 0;
     this.fechaInicio = data.fechaInicio || data.fechaCreacion || new Date().toISOString();
     this.fechaCreacion = data.fechaCreacion || new Date().toISOString();
     this.fechaLimite = data.fechaLimite || null;
@@ -254,6 +257,10 @@ export class Debt {
       errores.push("El aporte sugerido debe ser positivo");
     }
 
+    if (this.prestamoPendiente < 0) {
+      errores.push("El préstamo pendiente debe ser positivo");
+    }
+
     if (this.fechaLimite) {
       const dueDate = new Date(this.fechaLimite);
       if (Number.isNaN(dueDate.getTime())) {
@@ -294,6 +301,7 @@ export class Debt {
       archivada: this.archivada,
       fechaArchivado: this.fechaArchivado,
       aporteSugeridoDiario: this.aporteSugeridoDiario,
+      prestamoPendiente: this.prestamoPendiente,
       syncStatus: this.syncStatus,
       lastSyncedAt: this.lastSyncedAt,
       remoteId: this.remoteId,

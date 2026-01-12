@@ -70,6 +70,12 @@ export async function renderSavings() {
               </div>
 
               <div class="form-group">
+                <label class="form-label" for="saving-internal-loan">Préstamo pendiente en este fondo (Lps)</label>
+                <input type="number" id="saving-internal-loan" class="form-input" placeholder="0.00" step="0.01" min="0">
+                <small style="color: var(--color-text-tertiary);">Registra lo que tomaste prestado de este ahorro para reponerlo luego.</small>
+              </div>
+
+              <div class="form-group">
                 <label class="form-label" for="saving-locked">Restricción de retiros</label>
                 <label style="display: flex; align-items: flex-start; gap: var(--spacing-sm); font-size: var(--font-size-sm); color: var(--color-text-secondary);">
                   <input type="checkbox" id="saving-locked" style="margin-top: 4px;">
@@ -336,6 +342,9 @@ function renderSavingCard(saving) {
   const hasGoal = saving.objetivoOpcional && saving.objetivoOpcional > 0;
   const isProtected = Boolean(saving.intocable);
   const isAnnual = Boolean(saving.metaAnual);
+  const prestamoPendiente = Number.isFinite(Number(saving.prestamoPendiente))
+    ? Number(saving.prestamoPendiente)
+    : 0;
   const annualYear =
     typeof saving.anioMeta === "number"
       ? saving.anioMeta
@@ -448,6 +457,22 @@ function renderSavingCard(saving) {
             ${formatCurrency(saving.montoAcumulado)}
           </div>
         </div>
+
+        ${
+          prestamoPendiente > 0
+            ? `
+          <div style="padding: var(--spacing-sm); border-radius: var(--border-radius-md); background: rgba(245, 158, 11, 0.12); border-left: 3px solid var(--color-warning); margin-bottom: var(--spacing-md);">
+            <div style="font-size: var(--font-size-xs); color: var(--color-warning);">Préstamo pendiente en este fondo</div>
+            <div style="font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); color: var(--color-text-primary);">
+              ${formatCurrency(prestamoPendiente)}
+            </div>
+            <div style="font-size: var(--font-size-xs); color: var(--color-text-secondary); margin-top: var(--spacing-xxs);">
+              Recuerda reponerlo para mantener este ahorro completo.
+            </div>
+          </div>
+        `
+            : ""
+        }
 
         ${
           hasGoal
@@ -572,6 +597,10 @@ function attachEventListeners() {
         document.getElementById("saving-name").value = saving.nombre;
         document.getElementById("saving-goal").value =
           saving.objetivoOpcional || "";
+        document.getElementById("saving-internal-loan").value =
+          Number(saving.prestamoPendiente) > 0
+            ? Number(saving.prestamoPendiente).toFixed(2)
+            : "";
         document.getElementById("saving-locked").checked = Boolean(
           saving.intocable
         );
@@ -591,6 +620,7 @@ function attachEventListeners() {
       title.textContent = "Nuevo Fondo de Ahorro";
       document.getElementById("saving-locked").checked = false;
       document.getElementById("saving-annual").checked = false;
+      document.getElementById("saving-internal-loan").value = "";
       setAnnualYearSelection(new Date().getFullYear());
       const annualSettings = document.getElementById("saving-annual-settings");
       if (annualSettings) {
@@ -616,6 +646,10 @@ function attachEventListeners() {
     const nombre = document.getElementById("saving-name").value;
     const objetivoOpcional =
       parseFloat(document.getElementById("saving-goal").value) || null;
+    const prestamoValue =
+      document.getElementById("saving-internal-loan").value;
+    const prestamoPendiente =
+      prestamoValue !== "" ? parseFloat(prestamoValue) : 0;
     const esIntocable = document.getElementById("saving-locked").checked;
     const esMetaAnual = document.getElementById("saving-annual").checked;
     const anioMetaSeleccionado = esMetaAnual
@@ -634,6 +668,9 @@ function attachEventListeners() {
         const saving = currentSavings.find((s) => s.id === parseInt(savingId));
         saving.nombre = nombre;
         saving.objetivoOpcional = objetivoOpcional;
+        saving.prestamoPendiente = Number.isFinite(prestamoPendiente)
+          ? prestamoPendiente
+          : 0;
         saving.intocable = esIntocable;
         saving.metaAnual = esMetaAnual;
         saving.anioMeta = esMetaAnual ? anioMetaValido : null;
@@ -643,6 +680,9 @@ function attachEventListeners() {
         const saving = new Saving({
           nombre,
           objetivoOpcional,
+          prestamoPendiente: Number.isFinite(prestamoPendiente)
+            ? prestamoPendiente
+            : 0,
           intocable: esIntocable,
           metaAnual: esMetaAnual,
           anioMeta: esMetaAnual ? anioMetaValido : null,
