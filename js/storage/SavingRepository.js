@@ -69,13 +69,13 @@ class SavingRepository extends BaseRepository {
    * @param {string} nota
    * @returns {Promise<Object>}
    */
-  async depositar(savingId, monto, nota = "") {
+  async depositar(savingId, monto, nota = "", options = {}) {
     const saving = await this.getById(savingId);
     if (!saving) {
       throw new Error(`Ahorro con ID ${savingId} no encontrado`);
     }
 
-    const resultado = saving.depositar(monto, nota);
+    const resultado = saving.depositar(monto, nota, options);
     if (!resultado.success) {
       throw new Error(resultado.error);
     }
@@ -91,13 +91,13 @@ class SavingRepository extends BaseRepository {
    * @param {string} nota
    * @returns {Promise<Object>}
    */
-  async retirar(savingId, monto, nota) {
+  async retirar(savingId, monto, nota, options = {}) {
     const saving = await this.getById(savingId);
     if (!saving) {
       throw new Error(`Ahorro con ID ${savingId} no encontrado`);
     }
 
-    const resultado = saving.retirar(monto, nota);
+    const resultado = saving.retirar(monto, nota, options);
     if (!resultado.success) {
       throw new Error(resultado.error);
     }

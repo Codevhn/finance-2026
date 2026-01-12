@@ -32,20 +32,35 @@ export class Saving {
    * @param {string} nota - Nota opcional
    * @returns {Object} - Resultado de la operación
    */
-  depositar(monto, nota = "") {
+  depositar(monto, nota = "", options = {}) {
     if (monto <= 0) {
       return { success: false, error: "El monto debe ser mayor a 0" };
     }
+
+    const subtipo =
+      options && typeof options.subtipo === "string"
+        ? options.subtipo
+        : "normal";
+    const appliedToLoan =
+      subtipo === "reintegro-prestamo" && this.prestamoPendiente > 0;
 
     const deposito = {
       monto: parseFloat(monto),
       fecha: new Date().toISOString(),
       tipo: "deposito",
+      subtipo,
       nota: nota.trim(),
     };
 
     this.depositos.push(deposito);
     this.montoAcumulado += deposito.monto;
+    if (appliedToLoan) {
+      const aplicado = Math.min(this.prestamoPendiente, deposito.monto);
+      this.prestamoPendiente = Math.max(
+        0,
+        this.prestamoPendiente - aplicado
+      );
+    }
     this.syncStatus = "pending";
 
     return {
@@ -53,6 +68,7 @@ export class Saving {
       deposito,
       nuevoMonto: this.montoAcumulado,
       progreso: this.calcularProgreso(),
+      aplicadoPrestamo: appliedToLoan,
     };
   }
 
@@ -62,7 +78,7 @@ export class Saving {
    * @param {string} nota - Nota obligatoria para retiros
    * @returns {Object} - Resultado de la operación
    */
-  retirar(monto, nota = "") {
+  retirar(monto, nota = "", options = {}) {
     if (this.intocable) {
       return { success: false, error: "Este fondo está protegido y no permite retiros." };
     }
@@ -87,15 +103,24 @@ export class Saving {
       };
     }
 
+    const subtipo =
+      options && typeof options.subtipo === "string"
+        ? options.subtipo
+        : "normal";
+
     const retiro = {
       monto: parseFloat(monto),
       fecha: new Date().toISOString(),
       tipo: "retiro",
+      subtipo,
       nota: nota.trim(),
     };
 
     this.depositos.push(retiro);
     this.montoAcumulado -= retiro.monto;
+    if (subtipo === "prestamo") {
+      this.prestamoPendiente += retiro.monto;
+    }
     this.syncStatus = "pending";
 
     return {

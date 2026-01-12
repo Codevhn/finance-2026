@@ -166,6 +166,20 @@ export async function renderSavings() {
               </div>
 
               <div class="form-group">
+                <label class="form-label">Tipo de depósito</label>
+                <div style="display:flex; gap: var(--spacing-lg); flex-wrap: wrap;">
+                  <label style="display:flex; align-items:center; gap: var(--spacing-xs); font-weight: var(--font-weight-medium); cursor:pointer;">
+                    <input type="radio" name="deposit-type" value="normal" checked>
+                    <span>Depósito normal</span>
+                  </label>
+                  <label style="display:flex; align-items:center; gap: var(--spacing-xs); font-weight: var(--font-weight-medium); cursor:pointer;">
+                    <input type="radio" name="deposit-type" value="reintegro">
+                    <span>Reponer préstamo</span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="form-group">
                 <label class="form-label">Saldo Actual</label>
                 <div id="deposit-balance"></div>
               </div>
@@ -202,6 +216,20 @@ export async function renderSavings() {
               <div class="form-group">
                 <label class="form-label form-label--required" for="withdraw-note">Razón del Retiro</label>
                 <input type="text" id="withdraw-note" class="form-input" placeholder="Ej: Emergencia médica" required>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Tipo de retiro</label>
+                <div style="display:flex; gap: var(--spacing-lg); flex-wrap: wrap;">
+                  <label style="display:flex; align-items:center; gap: var(--spacing-xs); font-weight: var(--font-weight-medium); cursor:pointer;">
+                    <input type="radio" name="withdraw-type" value="normal" checked>
+                    <span>Retiro normal</span>
+                  </label>
+                  <label style="display:flex; align-items:center; gap: var(--spacing-xs); font-weight: var(--font-weight-medium); cursor:pointer;">
+                    <input type="radio" name="withdraw-type" value="prestamo">
+                    <span>Préstamo del ahorro</span>
+                  </label>
+                </div>
               </div>
 
               <div class="form-group">
@@ -345,6 +373,10 @@ function renderSavingCard(saving) {
   const prestamoPendiente = Number.isFinite(Number(saving.prestamoPendiente))
     ? Number(saving.prestamoPendiente)
     : 0;
+  const saldoActual = Number.isFinite(Number(saving.montoAcumulado))
+    ? Number(saving.montoAcumulado)
+    : 0;
+  const saldoNeto = saldoActual - prestamoPendiente;
   const annualYear =
     typeof saving.anioMeta === "number"
       ? saving.anioMeta
@@ -451,75 +483,67 @@ function renderSavingCard(saving) {
 
         <div style="padding: var(--spacing-md); background: rgba(16, 185, 129, 0.1); border-radius: var(--border-radius-md); margin-bottom: var(--spacing-md);">
           <div style="font-size: var(--font-size-xs); color: var(--color-text-tertiary); margin-bottom: var(--spacing-xs);">
-            Saldo Acumulado
+            Saldo actual (neto)
           </div>
-          <div style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-success);">
-            ${formatCurrency(saving.montoAcumulado)}
+          <div style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: ${
+            saldoNeto < 0 ? "var(--color-danger)" : "var(--color-success)"
+          };">
+            ${formatCurrency(saldoNeto)}
           </div>
+          ${
+            prestamoPendiente > 0
+              ? `<div style="font-size: var(--font-size-xs); color: var(--color-text-secondary); margin-top: var(--spacing-xxs);">
+                  Saldo disponible: ${formatCurrency(saldoActual)}
+                </div>`
+              : ""
+          }
         </div>
 
         ${
-          prestamoPendiente > 0
+          hasGoal || prestamoPendiente > 0
             ? `
-          <div style="padding: var(--spacing-sm); border-radius: var(--border-radius-md); background: rgba(245, 158, 11, 0.12); border-left: 3px solid var(--color-warning); margin-bottom: var(--spacing-md);">
-            <div style="font-size: var(--font-size-xs); color: var(--color-warning);">Préstamo pendiente en este fondo</div>
-            <div style="font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); color: var(--color-text-primary);">
-              ${formatCurrency(prestamoPendiente)}
-            </div>
-            <div style="font-size: var(--font-size-xs); color: var(--color-text-secondary); margin-top: var(--spacing-xxs);">
-              Recuerda reponerlo para mantener este ahorro completo.
-            </div>
+          <div style="display: grid; grid-template-columns: ${
+            hasGoal && prestamoPendiente > 0 ? "1fr 1fr" : "1fr"
+          }; gap: var(--spacing-md); margin-bottom: var(--spacing-md);">
+            ${
+              hasGoal
+                ? `
+              <div>
+                <div style="font-size: var(--font-size-xs); color: var(--color-text-tertiary);">Falta para meta</div>
+                <div style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); color: var(--color-primary);">
+                  ${formatCurrency(restante)}
+                </div>
+              </div>
+            `
+                : ""
+            }
+            ${
+              prestamoPendiente > 0
+                ? `
+              <div>
+                <div style="font-size: var(--font-size-xs); color: var(--color-text-tertiary);">Falta por reponer</div>
+                <div style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); color: var(--color-warning);">
+                  ${formatCurrency(prestamoPendiente)}
+                </div>
+              </div>
+            `
+                : ""
+            }
           </div>
         `
             : ""
         }
-
-        ${
-          hasGoal
-            ? `
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md); margin-bottom: var(--spacing-md);">
-            <div>
-              <div style="font-size: var(--font-size-xs); color: var(--color-text-tertiary);">Objetivo</div>
-              <div style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); color: var(--color-text-primary);">
-                ${formatCurrency(saving.objetivoOpcional)}
-              </div>
-            </div>
-            <div>
-              <div style="font-size: var(--font-size-xs); color: var(--color-text-tertiary);">Falta</div>
-              <div style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); color: var(--color-primary);">
-                ${formatCurrency(restante)}
-              </div>
-            </div>
-          </div>
-        `
-            : ""
-        }
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md);">
-          <div>
-            <div style="font-size: var(--font-size-xs); color: var(--color-text-tertiary);">Total Depositado</div>
-            <div style="font-size: var(--font-size-base); font-weight: var(--font-weight-medium); color: var(--color-success);">
-              ${formatCurrency(saving.getTotalDepositado())}
-            </div>
-          </div>
-          <div>
-            <div style="font-size: var(--font-size-xs); color: var(--color-text-tertiary);">Total Retirado</div>
-            <div style="font-size: var(--font-size-base); font-weight: var(--font-weight-medium); color: var(--color-danger);">
-              ${formatCurrency(saving.getTotalRetirado())}
-            </div>
-          </div>
-        </div>
 
         ${
           saving.depositos.length > 0
             ? `
           <details style="margin-top: var(--spacing-md);">
             <summary style="cursor: pointer; font-size: var(--font-size-sm); color: var(--color-text-secondary);">
-              Ver movimientos (${saving.depositos.length})
+              Movimientos recientes (${saving.depositos.length})
             </summary>
             <div style="margin-top: var(--spacing-sm); max-height: 200px; overflow-y: auto;">
               ${saving
-                .getHistorial(10)
+                .getHistorial(5)
                 .map((mov) => ({
                   mov,
                   originalIndex: saving.depositos.indexOf(mov),
@@ -530,7 +554,13 @@ function renderSavingCard(saving) {
                   <div style="flex:1;">
                     <div style="font-size: var(--font-size-xs); color: var(--color-text-tertiary);">
                       ${new Date(mov.fecha).toLocaleDateString("es-HN")} - ${
-                    mov.tipo === "deposito" ? "⬇️ Depósito" : "⬆️ Retiro"
+                    mov.tipo === "deposito"
+                      ? mov.subtipo === "reintegro-prestamo"
+                        ? "⬇️ Reintegro de préstamo"
+                        : "⬇️ Depósito"
+                      : mov.subtipo === "prestamo"
+                      ? "⬆️ Préstamo"
+                      : "⬆️ Retiro"
                   }
                     </div>
                     <div style="font-size: var(--font-size-xs); margin-top: var(--spacing-xxs); color: ${
@@ -562,6 +592,13 @@ function renderSavingCard(saving) {
             </div>
           </details>
         `
+            : ""
+        }
+        ${
+          saving.depositos.length === 0
+            ? `<div style="margin-top: var(--spacing-md); font-size: var(--font-size-xs); color: var(--color-text-tertiary);">
+                Sin movimientos registrados aún.
+              </div>`
             : ""
         }
       </div>
@@ -782,9 +819,20 @@ function attachEventListeners() {
     );
     const monto = parseFloat(document.getElementById("deposit-amount").value);
     const nota = document.getElementById("deposit-note").value;
+    const depositType =
+      document.querySelector('input[name="deposit-type"]:checked')?.value ||
+      "normal";
+    const depositOptions = {
+      subtipo: depositType === "reintegro" ? "reintegro-prestamo" : "normal",
+    };
 
     try {
-      await savingRepository.depositar(savingId, monto, nota);
+      await savingRepository.depositar(
+        savingId,
+        monto,
+        nota,
+        depositOptions
+      );
       window.closeDepositModal();
       await renderSavings();
     } catch (error) {
@@ -835,9 +883,20 @@ function attachEventListeners() {
     );
     const monto = parseFloat(document.getElementById("withdraw-amount").value);
     const nota = document.getElementById("withdraw-note").value;
+    const withdrawType =
+      document.querySelector('input[name="withdraw-type"]:checked')?.value ||
+      "normal";
+    const withdrawOptions = {
+      subtipo: withdrawType === "prestamo" ? "prestamo" : "normal",
+    };
 
     try {
-      await savingRepository.retirar(savingId, monto, nota);
+      await savingRepository.retirar(
+        savingId,
+        monto,
+        nota,
+        withdrawOptions
+      );
       window.closeWithdrawModal();
       await renderSavings();
     } catch (error) {
