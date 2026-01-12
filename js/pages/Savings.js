@@ -376,7 +376,14 @@ function renderSavingCard(saving) {
   const saldoActual = Number.isFinite(Number(saving.montoAcumulado))
     ? Number(saving.montoAcumulado)
     : 0;
-  const saldoNeto = saldoActual - prestamoPendiente;
+  const hasLoanMovements = saving.depositos?.some(
+    (mov) => mov.tipo === "retiro" && mov.subtipo === "prestamo"
+  );
+  const saldoNeto =
+    prestamoPendiente > 0 && !hasLoanMovements
+      ? saldoActual - prestamoPendiente
+      : saldoActual;
+  const saldoTotal = prestamoPendiente > 0 ? saldoNeto + prestamoPendiente : saldoNeto;
   const annualYear =
     typeof saving.anioMeta === "number"
       ? saving.anioMeta
@@ -483,7 +490,7 @@ function renderSavingCard(saving) {
 
         <div style="padding: var(--spacing-md); background: rgba(16, 185, 129, 0.1); border-radius: var(--border-radius-md); margin-bottom: var(--spacing-md);">
           <div style="font-size: var(--font-size-xs); color: var(--color-text-tertiary); margin-bottom: var(--spacing-xs);">
-            Saldo actual (neto)
+            Saldo actual
           </div>
           <div style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: ${
             saldoNeto < 0 ? "var(--color-danger)" : "var(--color-success)"
@@ -493,7 +500,7 @@ function renderSavingCard(saving) {
           ${
             prestamoPendiente > 0
               ? `<div style="font-size: var(--font-size-xs); color: var(--color-text-secondary); margin-top: var(--spacing-xxs);">
-                  Saldo disponible: ${formatCurrency(saldoActual)}
+                  Saldo total: ${formatCurrency(saldoTotal)}
                 </div>`
               : ""
           }

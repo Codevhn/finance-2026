@@ -143,6 +143,77 @@ class GoalRepository extends BaseRepository {
   }
 
   /**
+   * Registrar un préstamo tomado de una meta
+   * @param {number} goalId
+   * @param {number} monto
+   * @param {string} nota
+   * @returns {Promise<Object>}
+   */
+  async registrarPrestamo(goalId, monto, nota = "") {
+    const goal = await this.getById(goalId);
+    if (!goal) {
+      throw new Error(`Meta con ID ${goalId} no encontrada`);
+    }
+
+    const resultado = goal.registrarPrestamo(monto, nota);
+    if (!resultado.success) {
+      throw new Error(resultado.error);
+    }
+
+    await this.update(goal);
+    return resultado;
+  }
+
+  /**
+   * Reintegrar un préstamo tomado de una meta
+   * @param {number} goalId
+   * @param {number} monto
+   * @param {string} nota
+   * @returns {Promise<Object>}
+   */
+  async reintegrarPrestamo(goalId, monto, nota = "") {
+    const goal = await this.getById(goalId);
+    if (!goal) {
+      throw new Error(`Meta con ID ${goalId} no encontrada`);
+    }
+
+    const wasCompleted = goal.completada;
+    const resultado = goal.reintegrarPrestamo(monto, nota);
+    if (!resultado.success) {
+      throw new Error(resultado.error);
+    }
+
+    const now = Date.now();
+    let shouldDelayRestart = false;
+    if (goal.completada && !wasCompleted) {
+      const dueDate = goal.fechaLimite ? new Date(goal.fechaLimite) : null;
+      if (
+        dueDate &&
+        !Number.isNaN(dueDate.getTime()) &&
+        dueDate.getTime() > now
+      ) {
+        shouldDelayRestart = true;
+        goal.programarReinicio(dueDate);
+      } else {
+        goal.programarReinicio(null);
+      }
+    }
+
+    await this.update(goal);
+
+    if (goal.completada && !wasCompleted && !shouldDelayRestart) {
+      const nuevaMeta = goal.reiniciarCiclo();
+      await this.create(nuevaMeta);
+    }
+
+    return {
+      ...resultado,
+      reinicioProgramadoPara: goal.reinicioProgramadoPara,
+      reinicioInmediato: goal.completada && !wasCompleted && !shouldDelayRestart,
+    };
+  }
+
+  /**
    * Aplicar el monto de una meta completada a su deuda vinculada
    * @param {number} goalId
    * @param {Object} [options]
@@ -163,8 +234,8 @@ class GoalRepository extends BaseRepository {
       throw new Error("El aporte de esta meta ya se aplicó a su deuda.");
     }
 
-    const totalAportado = goal.getTotalAportado();
-    if (totalAportado <= 0) {
+    const saldoMetaDisponible = goal.getSaldoDisponible();
+    if (saldoMetaDisponible <= 0) {
       throw new Error("Esta meta no tiene aportes registrados.");
     }
 
@@ -177,12 +248,15 @@ class GoalRepository extends BaseRepository {
       throw new Error("La deuda vinculada ya no existe.");
     }
 
-    const saldoDisponible = debt.calcularSaldo();
-    if (saldoDisponible <= 0) {
+    const saldoDeudaDisponible = debt.calcularSaldo();
+    if (saldoDeudaDisponible <= 0) {
       throw new Error("La deuda vinculada ya está saldada.");
     }
 
-    const montoAplicable = Math.min(totalAportado, saldoDisponible);
+    const montoAplicable = Math.min(
+      saldoMetaDisponible,
+      saldoDeudaDisponible
+    );
     const notaAplicacion =
       nota.trim() ||
       `Aplicación de la meta "${goal.nombre}" (ciclo ${goal.cicloActual})`;

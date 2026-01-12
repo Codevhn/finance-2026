@@ -83,6 +83,7 @@ export function formatRecordForSupabase(record, tableName, userId) {
         aporte_sugerido_diario: normalizeNullableNumber(
           record.aporteSugeridoDiario
         ),
+        prestamo_pendiente: normalizeNumber(record.prestamoPendiente, 0),
         ahorro_anual_id: normalizeNullableInteger(record.ahorroAnualId),
         ahorro_anual_nombre: record.ahorroAnualNombre || null,
         notas: record.notas || null,
@@ -230,6 +231,7 @@ export function mapRecordFromSupabase(record, tableName) {
         aporteSugeridoDiario: normalizeNullableNumber(
           record.aporte_sugerido_diario
         ),
+        prestamoPendiente: normalizeNumber(record.prestamo_pendiente, 0),
         ahorroAnualId: normalizeNullableInteger(record.ahorro_anual_id),
         ahorroAnualNombre: record.ahorro_anual_nombre || "",
         notas: record.notas || "",

@@ -111,11 +111,11 @@ export async function renderGoals() {
         </div>
       </div>
 
-      <!-- Modal para agregar aporte -->
+      <!-- Modal para registrar movimiento -->
       <div id="contribution-modal" class="modal-overlay" style="display: none;">
         <div class="modal">
           <div class="modal__header">
-            <h3 class="modal__title">Agregar Aporte</h3>
+            <h3 class="modal__title">Registrar movimiento</h3>
             <button class="modal__close" onclick="window.closeContributionModal()">✕</button>
           </div>
           <div class="modal__body">
@@ -128,13 +128,31 @@ export async function renderGoals() {
               </div>
 
               <div class="form-group">
-                <label class="form-label form-label--required" for="contribution-amount">Monto del Aporte (Lps)</label>
+                <label class="form-label">Tipo de movimiento</label>
+                <div style="display:flex; gap: var(--spacing-lg); flex-wrap: wrap;">
+                  <label style="display:flex; align-items:center; gap: var(--spacing-xs); font-weight: var(--font-weight-medium); cursor:pointer;">
+                    <input type="radio" name="contribution-type" value="aporte" checked>
+                    <span>Aporte</span>
+                  </label>
+                  <label style="display:flex; align-items:center; gap: var(--spacing-xs); font-weight: var(--font-weight-medium); cursor:pointer;">
+                    <input type="radio" name="contribution-type" value="prestamo">
+                    <span>Préstamo de la meta</span>
+                  </label>
+                  <label style="display:flex; align-items:center; gap: var(--spacing-xs); font-weight: var(--font-weight-medium); cursor:pointer;">
+                    <input type="radio" name="contribution-type" value="reintegro">
+                    <span>Reintegro de préstamo</span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label form-label--required" for="contribution-amount">Monto (Lps)</label>
                 <input type="number" id="contribution-amount" class="form-input" placeholder="0.00" step="0.01" min="0.01" required>
               </div>
 
               <div class="form-group">
                 <label class="form-label" for="contribution-note">Nota (opcional)</label>
-                <input type="text" id="contribution-note" class="form-input" placeholder="Ej: Venta extra del fin de semana">
+                <input type="text" id="contribution-note" class="form-input" placeholder="Ej: Movimiento de la meta">
               </div>
 
               <div class="form-group">
@@ -145,7 +163,7 @@ export async function renderGoals() {
           </div>
           <div class="modal__footer">
             <button type="button" class="btn btn--secondary" onclick="window.closeContributionModal()">Cancelar</button>
-            <button type="button" class="btn btn--success" onclick="window.saveContribution()">Agregar Aporte</button>
+            <button type="button" class="btn btn--success" onclick="window.saveContribution()">Guardar movimiento</button>
           </div>
         </div>
       </div>
@@ -290,7 +308,14 @@ function renderGoalsContent() {
 function renderGoalCard(goal) {
   const progress = goal.calcularProgreso();
   const totalAportado = goal.getTotalAportado();
+  const saldoDisponible =
+    typeof goal.getSaldoDisponible === "function"
+      ? goal.getSaldoDisponible()
+      : totalAportado;
   const restante = goal.getMontoRestante();
+  const prestamoPendiente = Number.isFinite(Number(goal.prestamoPendiente))
+    ? Number(goal.prestamoPendiente)
+    : 0;
   const isCompleted = goal.completada;
   const dueStatus = getGoalDueStatus(goal);
   const dueDateDisplay = goal.fechaLimite
@@ -350,7 +375,7 @@ function renderGoalCard(goal) {
           ${
             !isCompleted
               ? `
-            <button class="btn btn--success btn--sm" onclick="window.openContributionModal(${goal.id})" title="Agregar aporte">
+            <button class="btn btn--success btn--sm" onclick="window.openContributionModal(${goal.id})" title="Registrar movimiento">
               💰
             </button>
           `
@@ -374,6 +399,15 @@ function renderGoalCard(goal) {
           isCompleted
             ? `
           <div class="badge badge--success" style="margin-bottom: var(--spacing-md);">✅ Completada</div>
+          ${
+            prestamoPendiente > 0
+              ? `<div style="margin-bottom: var(--spacing-md); font-size: var(--font-size-sm); color: var(--color-warning);">
+                  ⚠️ Hay un préstamo pendiente por reponer de ${formatCurrency(
+                    prestamoPendiente
+                  )}.
+                </div>`
+              : ""
+          }
           ${
             restartDateDisplay
               ? `<div style="margin-bottom: var(--spacing-md); font-size: var(--font-size-sm); color: var(--color-text-secondary);">
@@ -432,8 +466,15 @@ function renderGoalCard(goal) {
           <div>
             <div style="font-size: var(--font-size-xs); color: var(--color-text-tertiary);">Aportado</div>
             <div style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); color: var(--color-success);">
-              ${formatCurrency(totalAportado)}
+              ${formatCurrency(saldoDisponible)}
             </div>
+            ${
+              prestamoPendiente > 0
+                ? `<div style="font-size: var(--font-size-xs); color: var(--color-text-secondary);">
+                    Aportado bruto: ${formatCurrency(totalAportado)}
+                  </div>`
+                : ""
+            }
           </div>
         </div>
 
@@ -458,6 +499,21 @@ function renderGoalCard(goal) {
             </div>
           </div>
         `
+        }
+
+        ${
+          prestamoPendiente > 0
+            ? `
+          <div style="margin-top: var(--spacing-md); padding: var(--spacing-sm); border-radius: var(--border-radius-md); background: rgba(245, 158, 11, 0.12); border-left: 3px solid var(--color-warning);">
+            <div style="font-size: var(--font-size-xs); color: var(--color-text-tertiary); margin-bottom: var(--spacing-xs);">
+              Falta por reponer
+            </div>
+            <div style="font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); color: var(--color-warning);">
+              ${formatCurrency(prestamoPendiente)}
+            </div>
+          </div>
+        `
+            : ""
         }
 
         ${
@@ -563,7 +619,7 @@ function renderGoalCard(goal) {
             ? `
           <details style="margin-top: var(--spacing-md);">
             <summary style="cursor: pointer; font-size: var(--font-size-sm); color: var(--color-text-secondary);">
-              Ver aportes (${goal.aportes.length})
+              Movimientos (${goal.aportes.length})
             </summary>
             <div style="margin-top: var(--spacing-sm); max-height: 200px; overflow-y: auto;">
               ${goal.aportes
@@ -577,10 +633,13 @@ function renderGoalCard(goal) {
                 <div style="display: flex; justify-content: space-between; gap: var(--spacing-sm); padding: var(--spacing-xs) 0; border-bottom: 1px solid var(--color-border);">
                   <div style="flex:1;">
                     <div style="font-size: var(--font-size-xs); color: var(--color-text-tertiary);">
-                      ${new Date(aporte.fecha).toLocaleDateString("es-HN")}
-                    </div>
-                    <div style="font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); color: var(--color-text-primary);">
-                      ${formatCurrency(aporte.monto)}
+                      ${new Date(aporte.fecha).toLocaleDateString("es-HN")} - ${
+                      aporte.tipo === "prestamo"
+                        ? "⬆️ Préstamo"
+                        : aporte.tipo === "reintegro"
+                        ? "⬇️ Reintegro"
+                        : "⬇️ Aporte"
+                    }
                     </div>
                     <div style="font-size: var(--font-size-xs); margin-top: var(--spacing-xxs); color: ${
                       aporte.nota
@@ -602,8 +661,14 @@ function renderGoalCard(goal) {
                       </button>
                     </div>
                   </div>
-                  <span style="font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--color-success); white-space: nowrap;">
-                    +${formatCurrency(aporte.monto)}
+                  <span style="font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: ${
+                    aporte.tipo === "prestamo"
+                      ? "var(--color-danger)"
+                      : "var(--color-success)"
+                  }; white-space: nowrap;">
+                    ${aporte.tipo === "prestamo" ? "-" : "+"}${formatCurrency(
+                      aporte.monto
+                    )}
                   </span>
                 </div>
               `
@@ -836,12 +901,16 @@ function attachEventListeners() {
 
     const progress = goal.calcularProgreso();
     const totalAportado = goal.getTotalAportado();
+    const saldoDisponible =
+      typeof goal.getSaldoDisponible === "function"
+        ? goal.getSaldoDisponible()
+        : totalAportado;
     const restante = goal.getMontoRestante();
 
     document.getElementById("contribution-progress").innerHTML = `
       <div style="margin-bottom: var(--spacing-sm);">
         <div style="display: flex; justify-content: space-between; margin-bottom: var(--spacing-xs); font-size: var(--font-size-sm);">
-          <span>${formatCurrency(totalAportado)}</span>
+          <span>${formatCurrency(saldoDisponible)}</span>
           <span>${formatCurrency(goal.montoObjetivo)}</span>
         </div>
         <div class="progress">
@@ -878,78 +947,109 @@ function attachEventListeners() {
       document.getElementById("contribution-amount").value
     );
     const nota = document.getElementById("contribution-note").value;
+    const movementType =
+      document.querySelector('input[name="contribution-type"]:checked')?.value ||
+      "aporte";
 
     const goal = currentGoals.find((g) => g.id === goalId);
     if (!goal) {
       notifyError("No se encontró la meta seleccionada.");
       return;
     }
-
-    if (!Number.isFinite(monto) || monto <= 0) {
-      notifyError("Ingresa un monto válido para el aporte.");
-      return;
-    }
-
-    let restante = goal.getMontoRestante();
-    if (goal.completada || restante <= 0) {
-      notifyError(
-        "Esta meta ya está completada. Espera al siguiente ciclo para seguir aportando."
-      );
-      return;
-    }
-
-    let montoAplicable = monto;
-    let excedente = 0;
-    if (monto > restante) {
-      excedente = monto - restante;
-      montoAplicable = restante;
-    }
+    const wasCompleted = goal.completada;
 
     try {
-      const resultado = await goalRepository.agregarAporte(
+      if (!Number.isFinite(monto) || monto <= 0) {
+        notifyError("Ingresa un monto válido para el movimiento.");
+        return;
+      }
+
+      if (movementType === "aporte") {
+        let restante = goal.getMontoRestante();
+        if (goal.completada || restante <= 0) {
+          notifyError(
+            "Esta meta ya está completada. Espera al siguiente ciclo para seguir aportando."
+          );
+          return;
+        }
+
+        let montoAplicable = monto;
+        let excedente = 0;
+        if (monto > restante) {
+          excedente = monto - restante;
+          montoAplicable = restante;
+        }
+
+        const resultado = await goalRepository.agregarAporte(
+          goalId,
+          montoAplicable,
+          nota
+        );
+
+        if (resultado.progreso >= 100) {
+          const completionMessage = resultado.reinicioProgramadoPara
+            ? `🎉 ¡Felicidades! Has completado tu meta. El siguiente ciclo iniciará automáticamente el ${new Date(
+                resultado.reinicioProgramadoPara
+              ).toLocaleDateString("es-HN")}.`
+            : "🎉 ¡Felicidades! Has completado tu meta. Se creó una nueva meta para el siguiente ciclo.";
+          notifySuccess(completionMessage);
+        }
+
+        if (resultado.transferenciaAhorro) {
+          notifySuccess(
+            `Se transfirieron ${formatCurrency(
+              resultado.transferenciaAhorro.monto
+            )} al ahorro anual "${resultado.transferenciaAhorro.ahorroNombre}".`
+          );
+        }
+
+        let overflowPayload = null;
+        if (excedente > 0) {
+          notifySuccess(
+            `Tu meta se completó y sobraron ${formatCurrency(
+              excedente
+            )}. Decide cómo usar ese monto.`
+          );
+          overflowPayload = {
+            goalId,
+            goalName: goal.nombre,
+            amount: excedente,
+          };
+        }
+
+        window.closeContributionModal();
+        await renderGoals();
+        if (overflowPayload) {
+          openOverflowModal(overflowPayload);
+        }
+        return;
+      }
+
+      if (movementType === "prestamo") {
+        await goalRepository.registrarPrestamo(goalId, monto, nota);
+        notifySuccess("Préstamo registrado en la meta.");
+        window.closeContributionModal();
+        await renderGoals();
+        return;
+      }
+
+      const resultado = await goalRepository.reintegrarPrestamo(
         goalId,
-        montoAplicable,
+        monto,
         nota
       );
-
-      if (resultado.progreso >= 100) {
-        const completionMessage = resultado.reinicioProgramadoPara
-          ? `🎉 ¡Felicidades! Has completado tu meta. El siguiente ciclo iniciará automáticamente el ${new Date(
-              resultado.reinicioProgramadoPara
-            ).toLocaleDateString("es-HN")}.`
-          : "🎉 ¡Felicidades! Has completado tu meta. Se creó una nueva meta para el siguiente ciclo.";
-        notifySuccess(completionMessage);
-      }
-
-      if (resultado.transferenciaAhorro) {
+      if (resultado.progreso >= 100 && !wasCompleted) {
         notifySuccess(
-          `Se transfirieron ${formatCurrency(
-            resultado.transferenciaAhorro.monto
-          )} al ahorro anual "${resultado.transferenciaAhorro.ahorroNombre}".`
+          "✅ Reintegro registrado. La meta volvió a quedar completa."
         );
-      }
-
-      let overflowPayload = null;
-      if (excedente > 0) {
-        notifySuccess(
-          `Tu meta se completó y sobraron ${formatCurrency(
-            excedente
-          )}. Decide cómo usar ese monto.`
-        );
-        overflowPayload = {
-          goalId,
-          goalName: goal.nombre,
-          amount: excedente,
-        };
+      } else {
+        notifySuccess("Reintegro registrado en la meta.");
       }
 
       window.closeContributionModal();
       await renderGoals();
-      if (overflowPayload) {
-        openOverflowModal(overflowPayload);
-      }
     } catch (error) {
-      notifyError("Error al agregar aporte: " + error.message);
+      notifyError("Error al registrar movimiento: " + error.message);
     }
   };
 
@@ -989,7 +1089,10 @@ function attachEventListeners() {
       return;
     }
 
-    const montoDisponible = goal.getTotalAportado();
+    const montoDisponible =
+      typeof goal.getSaldoDisponible === "function"
+        ? goal.getSaldoDisponible()
+        : goal.getTotalAportado();
     if (montoDisponible <= 0) {
       notifyError("No hay aportes disponibles para aplicar.");
       return;

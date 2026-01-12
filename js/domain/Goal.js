@@ -20,6 +20,9 @@ export class Goal {
     this.aporteSugeridoDiario = Number.isFinite(Number(data.aporteSugeridoDiario))
       ? Number(data.aporteSugeridoDiario)
       : null;
+    this.prestamoPendiente = Number.isFinite(Number(data.prestamoPendiente))
+      ? Number(data.prestamoPendiente)
+      : 0;
     this.ahorroAnualId =
       data.ahorroAnualId !== undefined ? data.ahorroAnualId : null;
     this.ahorroAnualNombre = data.ahorroAnualNombre || "";
@@ -44,6 +47,7 @@ export class Goal {
     const aporte = {
       monto: parseFloat(monto),
       fecha: new Date().toISOString(),
+      tipo: "aporte",
       nota: nota.trim(),
     };
 
@@ -57,6 +61,79 @@ export class Goal {
     }
 
     return { success: true, aporte, progreso: progresoActual };
+  }
+
+  /**
+   * Registrar un préstamo tomado de la meta
+   * @param {number} monto
+   * @param {string} nota
+   * @returns {Object}
+   */
+  registrarPrestamo(monto, nota = "") {
+    if (monto <= 0) {
+      return { success: false, error: "El monto debe ser mayor a 0" };
+    }
+
+    const saldoDisponible = this.getSaldoDisponible();
+    if (monto > saldoDisponible) {
+      return {
+        success: false,
+        error: "Fondos insuficientes en la meta para ese préstamo",
+      };
+    }
+
+    const movimiento = {
+      monto: parseFloat(monto),
+      fecha: new Date().toISOString(),
+      tipo: "prestamo",
+      nota: nota.trim(),
+    };
+
+    this.aportes.push(movimiento);
+    this.prestamoPendiente += movimiento.monto;
+    this.syncStatus = "pending";
+
+    return { success: true, movimiento };
+  }
+
+  /**
+   * Reintegrar un préstamo tomado de la meta
+   * @param {number} monto
+   * @param {string} nota
+   * @returns {Object}
+   */
+  reintegrarPrestamo(monto, nota = "") {
+    if (monto <= 0) {
+      return { success: false, error: "El monto debe ser mayor a 0" };
+    }
+
+    if (this.prestamoPendiente <= 0) {
+      return {
+        success: false,
+        error: "No hay préstamo pendiente por reponer",
+      };
+    }
+
+    const movimiento = {
+      monto: parseFloat(monto),
+      fecha: new Date().toISOString(),
+      tipo: "reintegro",
+      nota: nota.trim(),
+    };
+
+    this.aportes.push(movimiento);
+    this.prestamoPendiente = Math.max(
+      0,
+      this.prestamoPendiente - movimiento.monto
+    );
+    this.syncStatus = "pending";
+
+    const progresoActual = this.calcularProgreso();
+    if (progresoActual >= 100 && !this.completada) {
+      this.marcarCompletada();
+    }
+
+    return { success: true, movimiento, progreso: progresoActual };
   }
 
   /**
@@ -103,7 +180,28 @@ export class Goal {
       };
     }
 
-    this.aportes[aporteIndex].monto = parseFloat(montoNumerico.toFixed(2));
+    const aporte = this.aportes[aporteIndex];
+    const tipo = aporte.tipo || "aporte";
+    const montoAnterior = Number(aporte.monto) || 0;
+    const nuevoMonto = parseFloat(montoNumerico.toFixed(2));
+
+    if (tipo === "prestamo") {
+      const delta = nuevoMonto - montoAnterior;
+      if (delta > 0 && delta > this.getSaldoDisponible()) {
+        return {
+          success: false,
+          error: "El préstamo supera el saldo disponible de la meta",
+        };
+      }
+      this.prestamoPendiente = Math.max(0, this.prestamoPendiente + delta);
+    }
+
+    if (tipo === "reintegro") {
+      const delta = nuevoMonto - montoAnterior;
+      this.prestamoPendiente = Math.max(0, this.prestamoPendiente - delta);
+    }
+
+    this.aportes[aporteIndex].monto = nuevoMonto;
     this.syncStatus = "pending";
     return { success: true, aporte: this.aportes[aporteIndex] };
   }
@@ -113,10 +211,7 @@ export class Goal {
    * @returns {number} - Porcentaje de progreso (0-100+)
    */
   calcularProgreso() {
-    const totalAportado = this.aportes.reduce(
-      (sum, aporte) => sum + aporte.monto,
-      0
-    );
+    const totalAportado = this.getSaldoDisponible();
     if (this.montoObjetivo === 0) return 0;
     return (totalAportado / this.montoObjetivo) * 100;
   }
@@ -126,7 +221,11 @@ export class Goal {
    * @returns {number} - Total en Lempiras
    */
   getTotalAportado() {
-    return this.aportes.reduce((sum, aporte) => sum + aporte.monto, 0);
+    return this.aportes.reduce((sum, aporte) => {
+      const tipo = aporte.tipo || "aporte";
+      if (tipo === "prestamo") return sum;
+      return sum + aporte.monto;
+    }, 0);
   }
 
   /**
@@ -134,8 +233,18 @@ export class Goal {
    * @returns {number} - Monto restante en Lempiras
    */
   getMontoRestante() {
-    const restante = this.montoObjetivo - this.getTotalAportado();
+    const restante = this.montoObjetivo - this.getSaldoDisponible();
     return Math.max(0, restante);
+  }
+
+  /**
+   * Obtener el saldo disponible descontando préstamos
+   * @returns {number}
+   */
+  getSaldoDisponible() {
+    const totalAportado = this.getTotalAportado();
+    const neto = totalAportado - this.prestamoPendiente;
+    return Math.max(0, neto);
   }
 
   /**
@@ -265,6 +374,10 @@ export class Goal {
       errores.push("El aporte sugerido debe ser un número positivo");
     }
 
+    if (this.prestamoPendiente < 0) {
+      errores.push("El préstamo pendiente debe ser positivo");
+    }
+
     return {
       valido: errores.length === 0,
       errores,
@@ -292,6 +405,7 @@ export class Goal {
       cicloActual: this.cicloActual,
       fechaCompletado: this.fechaCompletado,
       aporteSugeridoDiario: this.aporteSugeridoDiario,
+      prestamoPendiente: this.prestamoPendiente,
       ahorroAnualId: this.ahorroAnualId,
       ahorroAnualNombre: this.ahorroAnualNombre,
       reinicioProgramadoPara: this.reinicioProgramadoPara,
