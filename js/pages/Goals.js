@@ -151,12 +151,6 @@ export async function renderGoals() {
               </div>
 
               <div class="form-group">
-                <label class="form-label" for="contribution-loan-amount">Abonar al préstamo (Lps)</label>
-                <input type="number" id="contribution-loan-amount" class="form-input" placeholder="0.00" step="0.01" min="0">
-                <small class="form-hint">Si abonas aquí, ese monto se resta del préstamo y el resto va como aporte.</small>
-              </div>
-
-              <div class="form-group">
                 <label class="form-label" for="contribution-note">Nota (opcional)</label>
                 <input type="text" id="contribution-note" class="form-input" placeholder="Ej: Movimiento de la meta">
               </div>
@@ -170,6 +164,45 @@ export async function renderGoals() {
           <div class="modal__footer">
             <button type="button" class="btn btn--secondary" onclick="window.closeContributionModal()">Cancelar</button>
             <button type="button" class="btn btn--success" onclick="window.saveContribution()">Guardar movimiento</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal para abonar préstamo de meta -->
+      <div id="goal-loan-repay-modal" class="modal-overlay" style="display: none;">
+        <div class="modal">
+          <div class="modal__header">
+            <h3 class="modal__title">Abonar préstamo</h3>
+            <button class="modal__close" onclick="window.closeGoalLoanRepayModal()">✕</button>
+          </div>
+          <div class="modal__body">
+            <form id="goal-loan-repay-form">
+              <input type="hidden" id="goal-loan-repay-id">
+
+              <div class="form-group">
+                <label class="form-label">Meta</label>
+                <div id="goal-loan-repay-name" style="font-weight: 600; color: var(--color-text-primary);"></div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label form-label--required" for="goal-loan-repay-amount">Monto a Abonar (Lps)</label>
+                <input type="number" id="goal-loan-repay-amount" class="form-input" placeholder="0.00" step="0.01" min="0.01" required>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="goal-loan-repay-note">Nota (opcional)</label>
+                <input type="text" id="goal-loan-repay-note" class="form-input" placeholder="Ej: Abono semanal">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Préstamo Pendiente</label>
+                <div id="goal-loan-repay-pending"></div>
+              </div>
+            </form>
+          </div>
+          <div class="modal__footer">
+            <button class="btn btn--secondary" onclick="window.closeGoalLoanRepayModal()">Cancelar</button>
+            <button class="btn btn--primary" onclick="window.saveGoalLoanRepayment()">Abonar</button>
           </div>
         </div>
       </div>
@@ -384,6 +417,13 @@ function renderGoalCard(goal) {
             <button class="btn btn--success btn--sm" onclick="window.openContributionModal(${goal.id})" title="Registrar movimiento">
               💰
             </button>
+            ${
+              prestamoPendiente > 0
+                ? `<button class="btn btn--secondary btn--sm" onclick="window.openGoalLoanRepayModal(${goal.id})" title="Abonar préstamo">
+                    💳
+                  </button>`
+                : ""
+            }
           `
               : ""
           }
@@ -963,9 +1003,6 @@ function attachEventListeners() {
       document.getElementById("contribution-amount").value
     );
     const nota = document.getElementById("contribution-note").value;
-    const abonoPrestamo = parseFloat(
-      document.getElementById("contribution-loan-amount").value
-    );
     const movementType =
       document.querySelector('input[name="contribution-type"]:checked')?.value ||
       "aporte";
@@ -992,42 +1029,16 @@ function attachEventListeners() {
           return;
         }
 
-        const abonoValue = Number.isFinite(abonoPrestamo) ? abonoPrestamo : 0;
-        if (abonoValue > 0) {
-          if (abonoValue > monto) {
-            notifyError("El abono no puede ser mayor que el monto del aporte.");
-            return;
-          }
-          const prestamoPendiente = Number.isFinite(
-            Number(goal.prestamoPendiente)
-          )
-            ? Number(goal.prestamoPendiente)
-            : 0;
-          if (abonoValue > prestamoPendiente) {
-            notifyError("El abono excede el préstamo pendiente.");
-            return;
-          }
-        }
-
-        const aporteValue = monto - abonoValue;
-        if (aporteValue <= 0 && abonoValue <= 0) {
-          notifyError("Ingresa un monto válido para el movimiento.");
-          return;
-        }
-
         let montoAplicable = monto;
         let excedente = 0;
-        if (aporteValue > restante) {
-          excedente = aporteValue - restante;
+        if (monto > restante) {
+          excedente = monto - restante;
           montoAplicable = restante;
-        } else {
-          montoAplicable = aporteValue;
         }
 
-        const resultado = await goalRepository.registrarAporteConAbono(
+        const resultado = await goalRepository.agregarAporte(
           goalId,
           montoAplicable,
-          abonoValue,
           nota
         );
 
@@ -1078,23 +1089,89 @@ function attachEventListeners() {
         return;
       }
 
-      const resultado = await goalRepository.reintegrarPrestamo(
-        goalId,
-        monto,
-        nota
-      );
-      if (resultado.progreso >= 100 && !wasCompleted) {
-        notifySuccess(
-          "✅ Reintegro registrado. La meta volvió a quedar completa."
-        );
-      } else {
-        notifySuccess("Reintegro registrado en la meta.");
-      }
-
+      await goalRepository.reintegrarPrestamo(goalId, monto, nota);
+      notifySuccess("Reintegro registrado en la meta.");
       window.closeContributionModal();
       await renderGoals();
     } catch (error) {
       notifyError("Error al registrar movimiento: " + error.message);
+    }
+  };
+
+  window.openGoalLoanRepayModal = (goalId) => {
+    const goal = currentGoals.find((g) => g.id === goalId);
+    if (!goal) return;
+
+    const prestamoPendiente = Number.isFinite(Number(goal.prestamoPendiente))
+      ? Number(goal.prestamoPendiente)
+      : 0;
+
+    if (prestamoPendiente <= 0) {
+      notifyInfo("Esta meta no tiene préstamos pendientes.");
+      return;
+    }
+
+    const modal = document.getElementById("goal-loan-repay-modal");
+    const form = document.getElementById("goal-loan-repay-form");
+    if (!modal || !form) return;
+
+    form.reset();
+    document.getElementById("goal-loan-repay-id").value = goal.id;
+    document.getElementById("goal-loan-repay-name").textContent = goal.nombre;
+    document.getElementById("goal-loan-repay-pending").innerHTML = `
+      <div style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); color: var(--color-warning);">
+        ${formatCurrency(prestamoPendiente)}
+      </div>
+    `;
+
+    modal.style.display = "flex";
+  };
+
+  window.closeGoalLoanRepayModal = () => {
+    const modal = document.getElementById("goal-loan-repay-modal");
+    if (modal) {
+      modal.style.display = "none";
+    }
+  };
+
+  window.saveGoalLoanRepayment = async () => {
+    const form = document.getElementById("goal-loan-repay-form");
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+
+    const goalId = parseInt(
+      document.getElementById("goal-loan-repay-id").value,
+      10
+    );
+    const monto = parseFloat(
+      document.getElementById("goal-loan-repay-amount").value
+    );
+    const nota = document.getElementById("goal-loan-repay-note").value;
+
+    const goal = currentGoals.find((g) => g.id === goalId);
+    const prestamoPendiente = Number.isFinite(Number(goal?.prestamoPendiente))
+      ? Number(goal.prestamoPendiente)
+      : 0;
+
+    if (!Number.isFinite(monto) || monto <= 0) {
+      notifyError("Ingresa un monto válido para el abono.");
+      return;
+    }
+
+    if (monto > prestamoPendiente) {
+      notifyError("El abono excede el préstamo pendiente.");
+      return;
+    }
+
+    try {
+      await goalRepository.reintegrarPrestamo(goalId, monto, nota);
+      notifySuccess("Abono registrado en la meta.");
+      window.closeGoalLoanRepayModal();
+      await renderGoals();
+    } catch (error) {
+      notifyError("No se pudo registrar el abono: " + error.message);
     }
   };
 
