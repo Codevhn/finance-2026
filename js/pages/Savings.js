@@ -75,11 +75,6 @@ export async function renderSavings() {
                 <small style="color: var(--color-text-tertiary);">Opcional. Se registrará como depósito inicial.</small>
               </div>
 
-              <div class="form-group" id="saving-initial-loan-group">
-                <label class="form-label" for="saving-initial-loan">Préstamo inicial (Lps)</label>
-                <input type="number" id="saving-initial-loan" class="form-input" placeholder="0.00" step="0.01" min="0">
-                <small style="color: var(--color-text-tertiary);">Opcional. Se registrará como préstamo tomado del fondo.</small>
-              </div>
 
               <div class="form-group">
                 <label class="form-label" for="saving-locked">Restricción de retiros</label>
@@ -716,18 +711,13 @@ function attachEventListeners() {
         const initialBalanceGroup = document.getElementById(
           "saving-initial-balance-group"
         );
-        const initialLoanGroup = document.getElementById(
-          "saving-initial-loan-group"
-        );
         if (initialBalanceGroup) initialBalanceGroup.style.display = "none";
-        if (initialLoanGroup) initialLoanGroup.style.display = "none";
       }
     } else {
       title.textContent = "Nuevo Fondo de Ahorro";
       document.getElementById("saving-locked").checked = false;
       document.getElementById("saving-annual").checked = false;
       document.getElementById("saving-initial-balance").value = "";
-      document.getElementById("saving-initial-loan").value = "";
       setAnnualYearSelection(new Date().getFullYear());
       const annualSettings = document.getElementById("saving-annual-settings");
       if (annualSettings) {
@@ -736,11 +726,7 @@ function attachEventListeners() {
       const initialBalanceGroup = document.getElementById(
         "saving-initial-balance-group"
       );
-      const initialLoanGroup = document.getElementById(
-        "saving-initial-loan-group"
-      );
       if (initialBalanceGroup) initialBalanceGroup.style.display = "block";
-      if (initialLoanGroup) initialLoanGroup.style.display = "block";
     }
 
     modal.style.display = "flex";
@@ -787,26 +773,8 @@ function attachEventListeners() {
         // Crear
         const saldoInicialValue =
           document.getElementById("saving-initial-balance").value;
-        const prestamoInicialValue =
-          document.getElementById("saving-initial-loan").value;
         const saldoInicial =
           saldoInicialValue !== "" ? parseFloat(saldoInicialValue) : 0;
-        const prestamoInicial =
-          prestamoInicialValue !== "" ? parseFloat(prestamoInicialValue) : 0;
-
-        if (prestamoInicial > 0 && esIntocable) {
-          notifyError(
-            "No puedes registrar un préstamo inicial en un fondo protegido."
-          );
-          return;
-        }
-
-        if (prestamoInicial > saldoInicial) {
-          notifyError(
-            "El préstamo inicial no puede ser mayor que el saldo inicial."
-          );
-          return;
-        }
 
         const saving = new Saving({
           nombre,
@@ -817,11 +785,6 @@ function attachEventListeners() {
         });
         if (saldoInicial > 0) {
           saving.depositar(saldoInicial, "Saldo inicial");
-        }
-        if (prestamoInicial > 0) {
-          saving.retirar(prestamoInicial, "Préstamo inicial", {
-            subtipo: "prestamo",
-          });
         }
         await savingRepository.create(saving);
       }
