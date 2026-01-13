@@ -4,7 +4,6 @@
  */
 
 import authManager from "../auth/AuthManager.js";
-import supabaseClient from "../storage/SupabaseClient.js";
 import toast from "../utils/Toast.js";
 
 let authScreen = null;
@@ -22,17 +21,12 @@ export function renderLogin(onSuccess) {
     document.body.appendChild(authScreen);
   }
 
-  const savedUrl = localStorage.getItem("supabase_url") || "";
-  const savedKey = localStorage.getItem("supabase_key") || "";
-  const needsCredentials = !savedUrl || !savedKey;
-  const credentialsOpen = needsCredentials;
-
   authScreen.innerHTML = `
     <div class="auth-card">
       <div class="auth-card__header">
         <div>
           <h1>🔐 Acceso privado</h1>
-          <p>Inicia sesión con tu cuenta de Supabase</p>
+          <p>Inicia sesión con tu cuenta</p>
         </div>
       </div>
 
@@ -61,41 +55,6 @@ export function renderLogin(onSuccess) {
           >
         </div>
 
-        <details class="auth-card__credentials" ${
-          credentialsOpen ? "open" : ""
-        }>
-          <summary>Configuración avanzada de Supabase</summary>
-          <p class="form-hint">
-            Estas credenciales se guardan localmente. Solo necesitas
-            cambiarlas si migras a otro proyecto; normalmente se administran
-            desde Configuración → Sincronización después de iniciar sesión.
-          </p>
-
-          <div class="form-group">
-            <label for="auth-supabase-url">URL del Proyecto</label>
-            <input 
-              type="url" 
-              id="auth-supabase-url" 
-              class="form-input" 
-              placeholder="https://xxxxx.supabase.co"
-              value="${savedUrl}"
-              ${needsCredentials ? "required" : ""}
-            >
-          </div>
-
-          <div class="form-group">
-            <label for="auth-supabase-key">Clave pública (anon key)</label>
-            <input 
-              type="password" 
-              id="auth-supabase-key" 
-              class="form-input" 
-              placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-              value="${savedKey}"
-              ${needsCredentials ? "required" : ""}
-            >
-          </div>
-        </details>
-
         <button type="submit" class="btn btn--primary btn--full" id="auth-submit">
           Iniciar sesión
         </button>
@@ -117,36 +76,8 @@ export function renderLogin(onSuccess) {
 
     const email = document.getElementById("auth-email").value.trim();
     const password = document.getElementById("auth-password").value.trim();
-    const supabaseUrl = document
-      .getElementById("auth-supabase-url")
-      .value.trim();
-    const supabaseKey = document
-      .getElementById("auth-supabase-key")
-      .value.trim();
 
     try {
-      if (needsCredentials && (!supabaseUrl || !supabaseKey)) {
-        throw new Error(
-          "Configura la URL y la clave pública de Supabase para continuar."
-        );
-      }
-
-      if ((supabaseUrl && !supabaseKey) || (!supabaseUrl && supabaseKey)) {
-        throw new Error(
-          "Para actualizar la conexión necesitas ingresar URL y clave."
-        );
-      }
-
-      const shouldUpdateCredentials =
-        supabaseUrl &&
-        supabaseKey &&
-        (supabaseUrl !== savedUrl || supabaseKey !== savedKey);
-
-      if (shouldUpdateCredentials) {
-        supabaseClient.setCredentials(supabaseUrl, supabaseKey);
-      } else if (!supabaseClient.isConnected()) {
-        supabaseClient.init();
-      }
       await authManager.signIn(email, password);
 
       toast.success("Bienvenido 👋");
@@ -243,23 +174,6 @@ function injectAuthStyles() {
       font-size: 1rem;
     }
 
-    .auth-card__credentials {
-      border: 1px solid var(--color-border);
-      border-radius: 12px;
-      padding: 0.75rem 1rem;
-      background: rgba(59, 130, 246, 0.05);
-    }
-
-    .auth-card__credentials summary {
-      cursor: pointer;
-      font-weight: 600;
-      margin-bottom: 0.5rem;
-    }
-
-    .auth-card__credentials[open] {
-      padding-bottom: 1rem;
-    }
-
     .auth-card .form-group {
       display: flex;
       flex-direction: column;
@@ -277,12 +191,6 @@ function injectAuthStyles() {
       font-size: 1rem;
       background: var(--color-bg-tertiary);
       color: var(--color-text-primary);
-    }
-
-    .auth-card .form-hint {
-      font-size: 0.85rem;
-      color: var(--color-text-tertiary);
-      margin: 0 0 0.5rem;
     }
 
     @media (max-width: 480px) {
