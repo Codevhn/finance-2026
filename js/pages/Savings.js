@@ -222,11 +222,11 @@ export async function renderSavings() {
                 <label class="form-label">Tipo de retiro</label>
                 <div style="display:flex; gap: var(--spacing-lg); flex-wrap: wrap;">
                   <label style="display:flex; align-items:center; gap: var(--spacing-xs); font-weight: var(--font-weight-medium); cursor:pointer;">
-                    <input type="radio" name="withdraw-type" value="normal" checked>
+                    <input type="radio" name="withdraw-type" value="normal">
                     <span>Retiro normal</span>
                   </label>
                   <label style="display:flex; align-items:center; gap: var(--spacing-xs); font-weight: var(--font-weight-medium); cursor:pointer;">
-                    <input type="radio" name="withdraw-type" value="prestamo">
+                    <input type="radio" name="withdraw-type" value="prestamo" checked>
                     <span>Préstamo del ahorro</span>
                   </label>
                 </div>
