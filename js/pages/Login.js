@@ -26,6 +26,12 @@ export function renderLogin(onSuccess) {
   const savedKey = localStorage.getItem("supabase_key") || "";
   const needsCredentials = !savedUrl || !savedKey;
 
+  if (needsCredentials) {
+    renderSupabaseSetup(onSuccess, savedUrl, savedKey);
+    injectAuthStyles();
+    return;
+  }
+
   authScreen.innerHTML = `
     <div class="auth-card">
       <div class="auth-card__header">
@@ -60,9 +66,6 @@ export function renderLogin(onSuccess) {
           >
         </div>
 
-        <input type="hidden" id="auth-supabase-url" value="${savedUrl}">
-        <input type="hidden" id="auth-supabase-key" value="${savedKey}">
-
         <button type="submit" class="btn btn--primary btn--full" id="auth-submit">
           Iniciar sesión
         </button>
@@ -84,34 +87,8 @@ export function renderLogin(onSuccess) {
 
     const email = document.getElementById("auth-email").value.trim();
     const password = document.getElementById("auth-password").value.trim();
-    const supabaseUrl = document
-      .getElementById("auth-supabase-url")
-      .value.trim();
-    const supabaseKey = document
-      .getElementById("auth-supabase-key")
-      .value.trim();
-
     try {
-      if (needsCredentials && (!supabaseUrl || !supabaseKey)) {
-        throw new Error(
-          "Configura la URL y la clave pública de Supabase para continuar."
-        );
-      }
-
-      if ((supabaseUrl && !supabaseKey) || (!supabaseUrl && supabaseKey)) {
-        throw new Error(
-          "Para actualizar la conexión necesitas ingresar URL y clave."
-        );
-      }
-
-      const shouldUpdateCredentials =
-        supabaseUrl &&
-        supabaseKey &&
-        (supabaseUrl !== savedUrl || supabaseKey !== savedKey);
-
-      if (shouldUpdateCredentials) {
-        supabaseClient.setCredentials(supabaseUrl, supabaseKey);
-      } else if (!supabaseClient.isConnected()) {
+      if (!supabaseClient.isConnected()) {
         supabaseClient.init();
       }
       await authManager.signIn(email, password);
@@ -138,6 +115,89 @@ export function renderLogin(onSuccess) {
   });
 
   injectAuthStyles();
+}
+
+function renderSupabaseSetup(onSuccess, savedUrl, savedKey) {
+  authScreen.innerHTML = `
+    <div class="auth-card">
+      <div class="auth-card__header">
+        <div>
+          <h1>🔌 Configurar Supabase</h1>
+          <p>Guarda las credenciales para habilitar el acceso</p>
+        </div>
+      </div>
+
+      <form id="supabase-setup-form">
+        <div class="form-group">
+          <label for="auth-supabase-url">URL del Proyecto</label>
+          <input 
+            type="url" 
+            id="auth-supabase-url" 
+            class="form-input" 
+            placeholder="https://xxxxx.supabase.co"
+            value="${savedUrl}"
+            required
+          >
+          <small class="form-hint">Settings → API → Project URL</small>
+        </div>
+
+        <div class="form-group">
+          <label for="auth-supabase-key">Clave pública (anon key)</label>
+          <input 
+            type="password" 
+            id="auth-supabase-key" 
+            class="form-input" 
+            placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+            value="${savedKey}"
+            required
+          >
+          <small class="form-hint">Settings → API → anon/public key</small>
+        </div>
+
+        <button type="submit" class="btn btn--primary btn--full" id="supabase-setup-submit">
+          Guardar y continuar
+        </button>
+      </form>
+    </div>
+  `;
+
+  const form = document.getElementById("supabase-setup-form");
+  if (!form) return;
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const submitBtn = document.getElementById("supabase-setup-submit");
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Guardando...";
+    }
+
+    const supabaseUrl = document
+      .getElementById("auth-supabase-url")
+      .value.trim();
+    const supabaseKey = document
+      .getElementById("auth-supabase-key")
+      .value.trim();
+
+    try {
+      if (!supabaseUrl || !supabaseKey) {
+        throw new Error("Debes completar URL y clave pública.");
+      }
+
+      supabaseClient.setCredentials(supabaseUrl, supabaseKey);
+      toast.success("Credenciales guardadas. Ahora inicia sesión.");
+      renderLogin(onSuccess);
+    } catch (error) {
+      console.error("Error al guardar credenciales:", error);
+      toast.error(error?.message || "No se pudieron guardar las credenciales.");
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Guardar y continuar";
+      }
+    }
+  });
 }
 
 export function hideLogin() {
