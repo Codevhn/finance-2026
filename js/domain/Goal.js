@@ -183,10 +183,10 @@ export class Goal {
     const aporte = this.aportes[aporteIndex];
     const tipo = aporte.tipo || "aporte";
     const montoAnterior = Number(aporte.monto) || 0;
-    const nuevoMonto = parseFloat(montoNumerico.toFixed(2));
+    const nuevoMontoValue = parseFloat(montoNumerico.toFixed(2));
 
     if (tipo === "prestamo") {
-      const delta = nuevoMonto - montoAnterior;
+      const delta = nuevoMontoValue - montoAnterior;
       if (delta > 0 && delta > this.getSaldoDisponible()) {
         return {
           success: false,
@@ -197,11 +197,11 @@ export class Goal {
     }
 
     if (tipo === "reintegro") {
-      const delta = nuevoMonto - montoAnterior;
+      const delta = nuevoMontoValue - montoAnterior;
       this.prestamoPendiente = Math.max(0, this.prestamoPendiente - delta);
     }
 
-    this.aportes[aporteIndex].monto = nuevoMonto;
+    this.aportes[aporteIndex].monto = nuevoMontoValue;
     this.syncStatus = "pending";
     return { success: true, aporte: this.aportes[aporteIndex] };
   }
