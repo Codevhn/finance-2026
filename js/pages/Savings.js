@@ -408,14 +408,9 @@ function renderSavingCard(saving) {
   const saldoActual = Number.isFinite(Number(saving.montoAcumulado))
     ? Number(saving.montoAcumulado)
     : 0;
-  const hasLoanMovements = saving.depositos?.some(
-    (mov) => mov.tipo === "retiro" && mov.subtipo === "prestamo"
-  );
-  const saldoNeto =
-    prestamoPendiente > 0 && !hasLoanMovements
-      ? saldoActual - prestamoPendiente
-      : saldoActual;
-  const saldoTotal = prestamoPendiente > 0 ? saldoNeto + prestamoPendiente : saldoNeto;
+  const saldoNeto = saldoActual;
+  const saldoTotal =
+    prestamoPendiente > 0 ? saldoActual + prestamoPendiente : saldoActual;
   const totalRetirado =
     typeof saving.getTotalRetirado === "function"
       ? saving.getTotalRetirado()
