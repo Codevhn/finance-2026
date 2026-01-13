@@ -166,23 +166,10 @@ export async function renderSavings() {
               </div>
 
               <div class="form-group">
-                <label class="form-label">Tipo de depósito</label>
-                <div style="display:flex; gap: var(--spacing-lg); flex-wrap: wrap;">
-                  <label style="display:flex; align-items:center; gap: var(--spacing-xs); font-weight: var(--font-weight-medium); cursor:pointer;">
-                    <input type="radio" name="deposit-type" value="normal" checked>
-                    <span>Depósito normal</span>
-                  </label>
-                  <label style="display:flex; align-items:center; gap: var(--spacing-xs); font-weight: var(--font-weight-medium); cursor:pointer;">
-                    <input type="radio" name="deposit-type" value="reintegro">
-                    <span>Reponer préstamo</span>
-                  </label>
+                <label class="form-label">Depósito normal</label>
+                <div style="font-size: var(--font-size-xs); color: var(--color-text-tertiary);">
+                  Usa este formulario solo para aumentar el saldo del fondo.
                 </div>
-              </div>
-
-              <div class="form-group">
-                <label class="form-label" for="deposit-loan-amount">Abonar al préstamo (Lps)</label>
-                <input type="number" id="deposit-loan-amount" class="form-input" placeholder="0.00" step="0.01" min="0">
-                <small class="form-hint">Puedes abonar al préstamo y el resto se registra como depósito normal.</small>
               </div>
 
               <div class="form-group">
@@ -247,6 +234,45 @@ export async function renderSavings() {
           <div class="modal__footer">
             <button class="btn btn--secondary" onclick="window.closeWithdrawModal()">Cancelar</button>
             <button class="btn btn--danger" onclick="window.saveWithdraw()">Retirar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal para abonar préstamo -->
+      <div id="loan-repay-modal" class="modal-overlay" style="display: none;">
+        <div class="modal">
+          <div class="modal__header">
+            <h3 class="modal__title">Abonar préstamo</h3>
+            <button class="modal__close" onclick="window.closeLoanRepayModal()">✕</button>
+          </div>
+          <div class="modal__body">
+            <form id="loan-repay-form">
+              <input type="hidden" id="loan-repay-saving-id">
+
+              <div class="form-group">
+                <label class="form-label">Fondo</label>
+                <div id="loan-repay-saving-name" style="font-weight: 600; color: var(--color-text-primary);"></div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label form-label--required" for="loan-repay-amount">Monto a Abonar (Lps)</label>
+                <input type="number" id="loan-repay-amount" class="form-input" placeholder="0.00" step="0.01" min="0.01" required>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="loan-repay-note">Nota (opcional)</label>
+                <input type="text" id="loan-repay-note" class="form-input" placeholder="Ej: Abono semanal">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Préstamo Pendiente</label>
+                <div id="loan-repay-pending"></div>
+              </div>
+            </form>
+          </div>
+          <div class="modal__footer">
+            <button class="btn btn--secondary" onclick="window.closeLoanRepayModal()">Cancelar</button>
+            <button class="btn btn--primary" onclick="window.saveLoanRepayment()">Abonar</button>
           </div>
         </div>
       </div>
@@ -445,6 +471,13 @@ function renderSavingCard(saving) {
           })" title="Depositar">
             ⬇️
           </button>
+          ${
+            prestamoPendiente > 0
+              ? `<button class="btn btn--secondary btn--sm" onclick="window.openLoanRepayModal(${saving.id})" title="Abonar préstamo">
+                  💳
+                </button>`
+              : ""
+          }
           <button class="btn btn--danger btn--sm" onclick="window.openWithdrawModal(${saving.id})" title="${
             isProtected
               ? "Fondo protegido: no permite retiros"
@@ -862,13 +895,6 @@ function attachEventListeners() {
     );
     const monto = parseFloat(document.getElementById("deposit-amount").value);
     const nota = document.getElementById("deposit-note").value;
-    const abonoPrestamo = parseFloat(
-      document.getElementById("deposit-loan-amount").value
-    );
-    const depositType =
-      document.querySelector('input[name="deposit-type"]:checked')?.value ||
-      "normal";
-    const abonoValue = Number.isFinite(abonoPrestamo) ? abonoPrestamo : 0;
 
     if (!Number.isFinite(monto) || monto <= 0) {
       notifyError("Ingresa un monto válido para el depósito.");
@@ -876,35 +902,9 @@ function attachEventListeners() {
     }
 
     try {
-      if (abonoValue > 0) {
-        if (abonoValue > monto) {
-          notifyError("El abono no puede ser mayor que el depósito.");
-          return;
-        }
-        const saving = currentSavings.find((s) => s.id === savingId);
-        const prestamoPendiente = Number.isFinite(
-          Number(saving?.prestamoPendiente)
-        )
-          ? Number(saving.prestamoPendiente)
-          : 0;
-        if (abonoValue > prestamoPendiente) {
-          notifyError("El abono excede el préstamo pendiente.");
-          return;
-        }
-        await savingRepository.depositar(savingId, abonoValue, nota, {
-          subtipo: "reintegro-prestamo",
-        });
-        const restante = monto - abonoValue;
-        if (restante > 0) {
-          await savingRepository.depositar(savingId, restante, nota, {
-            subtipo: "normal",
-          });
-        }
-      } else {
-        await savingRepository.depositar(savingId, monto, nota, {
-          subtipo: depositType === "reintegro" ? "reintegro-prestamo" : "normal",
-        });
-      }
+      await savingRepository.depositar(savingId, monto, nota, {
+        subtipo: "normal",
+      });
       window.closeDepositModal();
       await renderSavings();
     } catch (error) {
@@ -973,6 +973,84 @@ function attachEventListeners() {
       await renderSavings();
     } catch (error) {
       notifyError("Error al retirar: " + error.message);
+    }
+  };
+
+  window.openLoanRepayModal = (savingId) => {
+    const saving = currentSavings.find((s) => s.id === savingId);
+    if (!saving) return;
+
+    const prestamoPendiente = Number.isFinite(Number(saving.prestamoPendiente))
+      ? Number(saving.prestamoPendiente)
+      : 0;
+
+    if (prestamoPendiente <= 0) {
+      notifyInfo("Este fondo no tiene préstamos pendientes.");
+      return;
+    }
+
+    const modal = document.getElementById("loan-repay-modal");
+    const form = document.getElementById("loan-repay-form");
+    if (!modal || !form) return;
+
+    form.reset();
+    document.getElementById("loan-repay-saving-id").value = saving.id;
+    document.getElementById("loan-repay-saving-name").textContent =
+      saving.nombre;
+    document.getElementById("loan-repay-pending").innerHTML = `
+      <div style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); color: var(--color-warning);">
+        ${formatCurrency(prestamoPendiente)}
+      </div>
+    `;
+
+    modal.style.display = "flex";
+  };
+
+  window.closeLoanRepayModal = () => {
+    const modal = document.getElementById("loan-repay-modal");
+    if (modal) {
+      modal.style.display = "none";
+    }
+  };
+
+  window.saveLoanRepayment = async () => {
+    const form = document.getElementById("loan-repay-form");
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+
+    const savingId = parseInt(
+      document.getElementById("loan-repay-saving-id").value
+    );
+    const monto = parseFloat(
+      document.getElementById("loan-repay-amount").value
+    );
+    const nota = document.getElementById("loan-repay-note").value;
+
+    const saving = currentSavings.find((s) => s.id === savingId);
+    const prestamoPendiente = Number.isFinite(Number(saving?.prestamoPendiente))
+      ? Number(saving.prestamoPendiente)
+      : 0;
+
+    if (!Number.isFinite(monto) || monto <= 0) {
+      notifyError("Ingresa un monto válido para el abono.");
+      return;
+    }
+
+    if (monto > prestamoPendiente) {
+      notifyError("El abono excede el préstamo pendiente.");
+      return;
+    }
+
+    try {
+      await savingRepository.depositar(savingId, monto, nota, {
+        subtipo: "reintegro-prestamo",
+      });
+      window.closeLoanRepayModal();
+      await renderSavings();
+    } catch (error) {
+      notifyError("No se pudo registrar el abono: " + error.message);
     }
   };
 
