@@ -409,8 +409,6 @@ function renderSavingCard(saving) {
     ? Number(saving.montoAcumulado)
     : 0;
   const saldoNeto = saldoActual;
-  const saldoTotal =
-    prestamoPendiente > 0 ? saldoActual + prestamoPendiente : saldoActual;
   const totalRetirado =
     typeof saving.getTotalRetirado === "function"
       ? saving.getTotalRetirado()
@@ -541,7 +539,7 @@ function renderSavingCard(saving) {
           ${
             prestamoPendiente > 0
               ? `<div style="font-size: var(--font-size-xs); color: var(--color-text-secondary); margin-top: var(--spacing-xxs);">
-                  Saldo total: ${formatCurrency(saldoTotal)}
+                  Préstamo pendiente: ${formatCurrency(prestamoPendiente)}
                 </div>`
               : ""
           }
