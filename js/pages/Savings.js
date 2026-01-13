@@ -384,6 +384,13 @@ function renderSavingCard(saving) {
       ? saldoActual - prestamoPendiente
       : saldoActual;
   const saldoTotal = prestamoPendiente > 0 ? saldoNeto + prestamoPendiente : saldoNeto;
+  const totalRetirado =
+    typeof saving.getTotalRetirado === "function"
+      ? saving.getTotalRetirado()
+      : (saving.depositos || []).reduce(
+          (sum, mov) => sum + (mov.tipo === "retiro" ? Number(mov.monto) || 0 : 0),
+          0
+        );
   const annualYear =
     typeof saving.anioMeta === "number"
       ? saving.anioMeta
@@ -505,6 +512,19 @@ function renderSavingCard(saving) {
               : ""
           }
         </div>
+
+        ${
+          totalRetirado > 0
+            ? `<div style="margin-bottom: var(--spacing-md); padding: var(--spacing-sm); border-radius: var(--border-radius-md); background: rgba(239, 68, 68, 0.08); border-left: 3px solid var(--color-danger);">
+                <div style="font-size: var(--font-size-xs); color: var(--color-text-tertiary); margin-bottom: var(--spacing-xxs);">
+                  Retirado total
+                </div>
+                <div style="font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); color: var(--color-danger);">
+                  ${formatCurrency(totalRetirado)}
+                </div>
+              </div>`
+            : ""
+        }
 
         ${
           hasGoal || prestamoPendiente > 0
