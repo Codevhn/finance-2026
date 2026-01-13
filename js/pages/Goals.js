@@ -151,6 +151,12 @@ export async function renderGoals() {
               </div>
 
               <div class="form-group">
+                <label class="form-label" for="contribution-loan-amount">Abonar al préstamo (Lps)</label>
+                <input type="number" id="contribution-loan-amount" class="form-input" placeholder="0.00" step="0.01" min="0">
+                <small class="form-hint">Si abonas aquí, ese monto se resta del préstamo y el resto va como aporte.</small>
+              </div>
+
+              <div class="form-group">
                 <label class="form-label" for="contribution-note">Nota (opcional)</label>
                 <input type="text" id="contribution-note" class="form-input" placeholder="Ej: Movimiento de la meta">
               </div>
@@ -906,6 +912,9 @@ function attachEventListeners() {
         ? goal.getSaldoDisponible()
         : totalAportado;
     const restante = goal.getMontoRestante();
+    const prestamoPendiente = Number.isFinite(Number(goal.prestamoPendiente))
+      ? Number(goal.prestamoPendiente)
+      : 0;
 
     document.getElementById("contribution-progress").innerHTML = `
       <div style="margin-bottom: var(--spacing-sm);">
@@ -923,6 +932,13 @@ function attachEventListeners() {
       <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">
         Falta: ${formatCurrency(restante)}
       </div>
+      ${
+        prestamoPendiente > 0
+          ? `<div style="font-size: var(--font-size-xs); color: var(--color-text-secondary); margin-top: var(--spacing-xxs);">
+              Préstamo pendiente: ${formatCurrency(prestamoPendiente)}
+            </div>`
+          : ""
+      }
     `;
 
     modal.style.display = "flex";
@@ -947,6 +963,9 @@ function attachEventListeners() {
       document.getElementById("contribution-amount").value
     );
     const nota = document.getElementById("contribution-note").value;
+    const abonoPrestamo = parseFloat(
+      document.getElementById("contribution-loan-amount").value
+    );
     const movementType =
       document.querySelector('input[name="contribution-type"]:checked')?.value ||
       "aporte";
@@ -973,16 +992,42 @@ function attachEventListeners() {
           return;
         }
 
-        let montoAplicable = monto;
-        let excedente = 0;
-        if (monto > restante) {
-          excedente = monto - restante;
-          montoAplicable = restante;
+        const abonoValue = Number.isFinite(abonoPrestamo) ? abonoPrestamo : 0;
+        if (abonoValue > 0) {
+          if (abonoValue > monto) {
+            notifyError("El abono no puede ser mayor que el monto del aporte.");
+            return;
+          }
+          const prestamoPendiente = Number.isFinite(
+            Number(goal.prestamoPendiente)
+          )
+            ? Number(goal.prestamoPendiente)
+            : 0;
+          if (abonoValue > prestamoPendiente) {
+            notifyError("El abono excede el préstamo pendiente.");
+            return;
+          }
         }
 
-        const resultado = await goalRepository.agregarAporte(
+        const aporteValue = monto - abonoValue;
+        if (aporteValue <= 0 && abonoValue <= 0) {
+          notifyError("Ingresa un monto válido para el movimiento.");
+          return;
+        }
+
+        let montoAplicable = monto;
+        let excedente = 0;
+        if (aporteValue > restante) {
+          excedente = aporteValue - restante;
+          montoAplicable = restante;
+        } else {
+          montoAplicable = aporteValue;
+        }
+
+        const resultado = await goalRepository.registrarAporteConAbono(
           goalId,
           montoAplicable,
+          abonoValue,
           nota
         );
 

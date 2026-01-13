@@ -180,6 +180,12 @@ export async function renderSavings() {
               </div>
 
               <div class="form-group">
+                <label class="form-label" for="deposit-loan-amount">Abonar al préstamo (Lps)</label>
+                <input type="number" id="deposit-loan-amount" class="form-input" placeholder="0.00" step="0.01" min="0">
+                <small class="form-hint">Puedes abonar al préstamo y el resto se registra como depósito normal.</small>
+              </div>
+
+              <div class="form-group">
                 <label class="form-label">Saldo Actual</label>
                 <div id="deposit-balance"></div>
               </div>
@@ -802,11 +808,21 @@ function attachEventListeners() {
 
     const progress = saving.calcularProgreso();
     const hasGoal = saving.objetivoOpcional && saving.objetivoOpcional > 0;
+    const prestamoPendiente = Number.isFinite(Number(saving.prestamoPendiente))
+      ? Number(saving.prestamoPendiente)
+      : 0;
 
     document.getElementById("deposit-balance").innerHTML = `
       <div style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); color: var(--color-success);">
         ${formatCurrency(saving.montoAcumulado)}
       </div>
+      ${
+        prestamoPendiente > 0
+          ? `<div style="font-size: var(--font-size-xs); color: var(--color-text-secondary); margin-top: var(--spacing-xxs);">
+              Préstamo pendiente: ${formatCurrency(prestamoPendiente)}
+            </div>`
+          : ""
+      }
       ${
         hasGoal
           ? `
@@ -846,20 +862,49 @@ function attachEventListeners() {
     );
     const monto = parseFloat(document.getElementById("deposit-amount").value);
     const nota = document.getElementById("deposit-note").value;
+    const abonoPrestamo = parseFloat(
+      document.getElementById("deposit-loan-amount").value
+    );
     const depositType =
       document.querySelector('input[name="deposit-type"]:checked')?.value ||
       "normal";
-    const depositOptions = {
-      subtipo: depositType === "reintegro" ? "reintegro-prestamo" : "normal",
-    };
+    const abonoValue = Number.isFinite(abonoPrestamo) ? abonoPrestamo : 0;
+
+    if (!Number.isFinite(monto) || monto <= 0) {
+      notifyError("Ingresa un monto válido para el depósito.");
+      return;
+    }
 
     try {
-      await savingRepository.depositar(
-        savingId,
-        monto,
-        nota,
-        depositOptions
-      );
+      if (abonoValue > 0) {
+        if (abonoValue > monto) {
+          notifyError("El abono no puede ser mayor que el depósito.");
+          return;
+        }
+        const saving = currentSavings.find((s) => s.id === savingId);
+        const prestamoPendiente = Number.isFinite(
+          Number(saving?.prestamoPendiente)
+        )
+          ? Number(saving.prestamoPendiente)
+          : 0;
+        if (abonoValue > prestamoPendiente) {
+          notifyError("El abono excede el préstamo pendiente.");
+          return;
+        }
+        await savingRepository.depositar(savingId, abonoValue, nota, {
+          subtipo: "reintegro-prestamo",
+        });
+        const restante = monto - abonoValue;
+        if (restante > 0) {
+          await savingRepository.depositar(savingId, restante, nota, {
+            subtipo: "normal",
+          });
+        }
+      } else {
+        await savingRepository.depositar(savingId, monto, nota, {
+          subtipo: depositType === "reintegro" ? "reintegro-prestamo" : "normal",
+        });
+      }
       window.closeDepositModal();
       await renderSavings();
     } catch (error) {
