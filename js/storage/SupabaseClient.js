@@ -4,6 +4,8 @@
  * Usa la librería cargada desde CDN (window.supabase)
  */
 
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from "../config/supabaseConfig.js";
+
 class SupabaseClient {
   constructor() {
     this.client = null;
@@ -27,9 +29,10 @@ class SupabaseClient {
       return null;
     }
 
-    // Obtener credenciales del localStorage
-    const supabaseUrl = localStorage.getItem("supabase_url");
-    const supabaseKey = localStorage.getItem("supabase_key");
+    // Obtener credenciales precargadas o respaldo local
+    const supabaseUrl = SUPABASE_URL || localStorage.getItem("supabase_url");
+    const supabaseKey =
+      SUPABASE_ANON_KEY || localStorage.getItem("supabase_key");
 
     if (!supabaseUrl || !supabaseKey) {
       console.warn("⚠️ Credenciales de Supabase no configuradas");

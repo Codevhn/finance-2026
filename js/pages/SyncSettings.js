@@ -19,11 +19,6 @@ export async function renderSyncSettings() {
   const userEmail = authManager.getUser()?.email || "Sin sesión";
   const canSync = clientConfigured && isAuthenticated;
 
-  // Obtener credenciales guardadas (sin mostrar la clave completa)
-  const savedUrl = localStorage.getItem("supabase_url") || "";
-  const savedKey = localStorage.getItem("supabase_key") || "";
-  const keyPreview = savedKey ? savedKey.substring(0, 20) + "..." : "";
-
   container.innerHTML = `
     <div class="page-container">
       <div class="page-header">
@@ -133,56 +128,6 @@ export async function renderSyncSettings() {
         </div>
       </div>
 
-      <!-- Configuración de Credenciales -->
-      <div class="card">
-        <div class="card-header">
-          <h2 class="card-title">Credenciales de Supabase</h2>
-        </div>
-        <div class="card-body">
-          <form id="form-credentials">
-            <div class="form-group">
-              <label for="supabase-url">URL del Proyecto</label>
-              <input 
-                type="url" 
-                id="supabase-url" 
-                class="form-input" 
-                placeholder="https://xxxxx.supabase.co"
-                value="${savedUrl}"
-                required
-              >
-              <small class="form-hint">Encuentra esto en Settings → API → Project URL</small>
-            </div>
-
-            <div class="form-group">
-              <label for="supabase-key">Clave Pública (anon key)</label>
-              <input 
-                type="password" 
-                id="supabase-key" 
-                class="form-input" 
-                placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                value="${savedKey}"
-                required
-              >
-              <small class="form-hint">Encuentra esto en Settings → API → anon/public key</small>
-              ${
-                savedKey
-                  ? `<small class="form-hint">Guardado: ${keyPreview}</small>`
-                  : ""
-              }
-            </div>
-
-            <div class="button-group">
-              <button type="submit" class="btn btn--primary">
-                💾 Guardar y Conectar
-              </button>
-              <button type="button" class="btn btn--secondary" id="btn-test-connection">
-                🔌 Probar Conexión
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-
       <!-- Migración de Datos -->
       ${
         canSync
@@ -239,7 +184,7 @@ export async function renderSyncSettings() {
             
             <div class="info-item">
               <strong>Seguridad:</strong>
-              <p>Tus credenciales se guardan localmente en el navegador. Nunca las compartas públicamente.</p>
+              <p>Las credenciales del proyecto se gestionan internamente y no se exponen en la interfaz.</p>
             </div>
           </div>
         </div>
@@ -252,65 +197,6 @@ export async function renderSyncSettings() {
 }
 
 function setupEventListeners() {
-  // Guardar credenciales
-  const formCredentials = document.getElementById("form-credentials");
-  if (formCredentials) {
-    formCredentials.addEventListener("submit", async (e) => {
-      e.preventDefault();
-
-      const url = document.getElementById("supabase-url").value.trim();
-      const key = document.getElementById("supabase-key").value.trim();
-
-      try {
-        supabaseClient.setCredentials(url, key);
-
-        // Probar conexión
-        const connected = await supabaseClient.testConnection();
-
-        if (connected) {
-          toast.success("Credenciales guardadas y conexión exitosa");
-          syncManager.startAutoSync();
-          renderSyncSettings(); // Recargar página
-        } else {
-          toast.error(
-            "Credenciales guardadas pero no se pudo conectar. Verifica que sean correctas."
-          );
-        }
-      } catch (error) {
-        toast.error("Error al guardar credenciales: " + error.message);
-      }
-    });
-  }
-
-  // Probar conexión
-  const btnTestConnection = document.getElementById("btn-test-connection");
-  if (btnTestConnection) {
-    btnTestConnection.addEventListener("click", async () => {
-      if (!authManager.isAuthenticated()) {
-        toast.error("Debes iniciar sesión para probar la conexión.");
-        return;
-      }
-
-      btnTestConnection.disabled = true;
-      btnTestConnection.textContent = "🔄 Probando...";
-
-      try {
-        const connected = await supabaseClient.testConnection();
-
-        if (connected) {
-          toast.success("Conexión exitosa a Supabase");
-        } else {
-          toast.error("No se pudo conectar. Verifica tus credenciales.");
-        }
-      } catch (error) {
-        toast.error("Error: " + error.message);
-      } finally {
-        btnTestConnection.disabled = false;
-        btnTestConnection.textContent = "🔌 Probar Conexión";
-      }
-    });
-  }
-
   // Sincronizar ahora
   const btnSyncNow = document.getElementById("btn-sync-now");
   if (btnSyncNow) {
